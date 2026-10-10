@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Search, LocateFixed, Loader2 } from 'lucide-react';
 import { featuredCities, cityName, customCity } from '../data/cities';
-import { geocode, reverseGeocode } from '../services/transit';
+import { geocode, reverseGeocode } from '../services/provider';
 
 export default function CityModal({ isOpen, onClose, activeCity, onSelect, t, lang, getLocation, locating }) {
   const [text, setText] = useState('');

@@ -48,8 +48,6 @@ const shot = async name => {
   await page.screenshot({ path: `${OUT}/${name}-${size.suffix}.png` });
   console.log('saved', lang, name);
 };
-const tab = label => page.locator('nav button', { hasText: label }).first().click().catch(() =>
-  page.locator('nav button').nth(['planner', 'departures', 'map', 'tickets', 'taxi'].indexOf(label)).click());
 
 const pickPlace = async (index, text) => {
   const input = page.getByPlaceholder(t.planner.placeholder).nth(index);

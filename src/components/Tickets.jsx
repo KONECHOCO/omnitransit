@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Ticket, ExternalLink, ShieldCheck, Loader2, Info } from 'lucide-react';
-import { departures, modeGroup, MODE_ICON } from '../services/transit';
+import { modeGroup, MODE_ICON } from '../services/transit';
+import { departures } from '../services/provider';
 import { fmt } from '../data/translations';
 
 /** Toglie i parametri di tracciamento (utm_*) dai link degli operatori. */
@@ -14,14 +15,14 @@ function cleanUrl(url) {
   }
 }
 
-export default function Tickets({ city, cityLabel, t }) {
+export default function Tickets({ city, cityLabel, t, lang }) {
   const [agencies, setAgencies] = useState(null);
 
   // Operatori realmente attivi intorno al centro, ricavati dagli orari ufficiali
   useEffect(() => {
     const ctrl = new AbortController();
     setAgencies(null);
-    departures({ center: { lat: city.lat, lon: city.lon }, radius: 1500, n: 120, signal: ctrl.signal })
+    departures({ center: { lat: city.lat, lon: city.lon }, radius: 1500, n: 120, signal: ctrl.signal, lang })
       .then(list => {
         const map = new Map();
         list.forEach(d => {
@@ -35,7 +36,7 @@ export default function Tickets({ city, cityLabel, t }) {
       })
       .catch(() => setAgencies([]));
     return () => ctrl.abort();
-  }, [city.lat, city.lon]);
+  }, [city.lat, city.lon, lang]);
 
   return (
     <div className="space-y-5">

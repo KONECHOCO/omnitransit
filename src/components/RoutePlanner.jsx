@@ -4,7 +4,8 @@ import {
   Map as MapIcon, Star, Home, Briefcase, ExternalLink, AlertCircle, Loader2, Radio
 } from 'lucide-react';
 import PlaceInput from './PlaceInput';
-import { planTrip, lineName, modeGroup, MODE_ICON, MODE_COLOR, formatTime, formatDuration, delayMinutes, walkSeconds } from '../services/transit';
+import { planTrip } from '../services/provider';
+import { lineName, modeGroup, MODE_ICON, MODE_COLOR, formatTime, formatDuration, delayMinutes, walkSeconds } from '../services/transit';
 import { usePrefs, updatePrefs, addRecent, isFavorite, toggleFavorite, slimPlace, FREE_FAVORITES_LIMIT } from '../services/storage';
 import { isFeatureUnlocked, unlockWithRewardedVideo, useMonetization, trackAdAction } from '../services/monetization';
 import { fmt } from '../data/translations';
@@ -53,7 +54,7 @@ export default function RoutePlanner({ city, t, lang, locale, getLocation, locat
     setError(null);
     try {
       const time = overrideTime || (timeMode === 'now' ? new Date() : new Date(when));
-      const res = await planTrip(from, to, { time, arriveBy: timeMode === 'arrive' && !overrideTime, wheelchair });
+      const res = await planTrip(from, to, { time, arriveBy: timeMode === 'arrive' && !overrideTime, wheelchair, lang });
       setResult(res);
       setExpanded(null);
       addRecent(from);
@@ -301,7 +302,7 @@ function ItineraryCard({ it, t, locale, open, onToggle, onShowOnMap, destName })
                 />
                 {leg.mode === 'WALK' ? (
                   <div className="text-slate-300">
-                    🚶 {fmt(t.planner.walkTo, { x: leg.to.name === 'END' ? destName || '' : leg.to.name })}
+                    🚶 {fmt(t.planner.walkTo, { x: leg.to.name === 'END' || !leg.to.name ? destName || '' : leg.to.name })}
                     <span className="text-slate-500"> · {Math.round(leg.duration / 60)} {t.common.min}{leg.distance ? ` · ${Math.round(leg.distance)} m` : ''}</span>
                   </div>
                 ) : (
@@ -336,8 +337,14 @@ function ItineraryCard({ it, t, locale, open, onToggle, onShowOnMap, destName })
               </li>
             ))}
           </ol>
-          <div className="flex justify-end">
-            <button onClick={onShowOnMap} className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300">
+          <div className="flex items-end justify-between gap-3">
+            <p className="text-[10px] text-slate-500 min-w-0">
+              {t.common.dataBy} {it.source === 'here' ? '© HERE' : 'GTFS / MOTIS'}
+              {(it.attributions || []).filter((a, i, all) => all.findIndex(b => b.text === a.text) === i).map(a => (
+                <span key={a.text}> · {a.href ? <a href={a.href} target="_blank" rel="noreferrer" className="underline">{a.text}</a> : a.text}</span>
+              ))}
+            </p>
+            <button onClick={onShowOnMap} className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300">
               <MapIcon className="w-4 h-4" />{t.planner.showMap}
             </button>
           </div>

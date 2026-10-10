@@ -195,6 +195,8 @@ export const MODE_COLOR = { walk: '#64748b', bike: '#22c55e', car: '#eab308', bu
 
 export function formatTime(iso, tz, locale) {
   if (!iso) return '';
+  // Senza fuso esplicito (dati HERE) l'ISO contiene già l'ora locale della città: la usiamo così com'è
+  if (!tz && /T\d{2}:\d{2}.*[+-]\d{2}:\d{2}$/.test(iso)) return iso.slice(11, 16);
   try {
     return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', timeZone: tz }).format(new Date(iso));
   } catch {

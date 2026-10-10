@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { LocateFixed, Loader2, X } from 'lucide-react';
-import { stopsInBounds, departures, decodePolyline, modeGroup, MODE_COLOR, MODE_ICON, formatTime, minutesUntil } from '../services/transit';
+import { stopsInBounds, departures, stationsAround, inMotisCoverage } from '../services/provider';
+import { decodePolyline, modeGroup, MODE_COLOR, MODE_ICON, formatTime, minutesUntil } from '../services/transit';
 
 const STOPS_MIN_ZOOM = 15;
 
@@ -15,8 +16,11 @@ function FitTo({ center, bounds }) {
   return null;
 }
 
-/** Carica le fermate visibili quando la mappa è abbastanza ingrandita. */
-function StopsLayer({ t, locale, onOpenDepartures, onZoomInfo }) {
+/**
+ * Fermate sulla mappa. Nella zona del nostro server si caricano da sole quando la mappa è ingrandita;
+ * fuori zona (dati HERE, a consumo) solo quando l'utente preme "Cerca fermate qui" (searchToken).
+ */
+function StopsLayer({ t, locale, onOpenDepartures, onAreaInfo, searchToken, lang }) {
   const [stops, setStops] = useState([]);
   const ctrlRef = useRef(null);
   const timerRef = useRef(null);
@@ -28,8 +32,11 @@ function StopsLayer({ t, locale, onOpenDepartures, onZoomInfo }) {
   const refresh = () => {
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(async () => {
+      const c = map.getCenter();
+      const outside = !inMotisCoverage({ lat: c.lat, lon: c.lng });
       const zoomOk = map.getZoom() >= STOPS_MIN_ZOOM;
-      onZoomInfo(!zoomOk);
+      onAreaInfo({ needZoom: !zoomOk, outside });
+      if (outside) return; // le fermate HERE restano finché l'utente non cerca di nuovo
       if (!zoomOk) {
         setStops([]);
         return;
@@ -52,6 +59,16 @@ function StopsLayer({ t, locale, onOpenDepartures, onZoomInfo }) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!searchToken) return;
+    const ctrl = new AbortController();
+    const c = map.getCenter();
+    stationsAround({ lat: c.lat, lon: c.lng }, { signal: ctrl.signal, lang })
+      .then(setStops)
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [searchToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return stops.slice(0, 300).map(s => {
     const g = modeGroup(s.modes?.[0]);
     return (
@@ -62,22 +79,22 @@ function StopsLayer({ t, locale, onOpenDepartures, onZoomInfo }) {
         pathOptions={{ color: '#fff', weight: 2, fillColor: MODE_COLOR[g], fillOpacity: 1 }}
       >
         <Popup>
-          <StopPopup stop={s} t={t} locale={locale} onOpenDepartures={onOpenDepartures} />
+          <StopPopup stop={s} t={t} locale={locale} onOpenDepartures={onOpenDepartures} lang={lang} />
         </Popup>
       </CircleMarker>
     );
   });
 }
 
-function StopPopup({ stop, t, locale, onOpenDepartures }) {
+function StopPopup({ stop, t, locale, onOpenDepartures, lang }) {
   const [items, setItems] = useState(null);
   useEffect(() => {
     const ctrl = new AbortController();
-    departures({ stopId: stop.stopId, n: 5, signal: ctrl.signal })
+    departures({ stopId: stop.stopId, n: 5, signal: ctrl.signal, lang })
       .then(setItems)
       .catch(() => setItems([]));
     return () => ctrl.abort();
-  }, [stop.stopId]);
+  }, [stop.stopId, lang]);
 
   return (
     <div className="min-w-[200px] space-y-2 text-xs">
@@ -105,12 +122,14 @@ function StopPopup({ stop, t, locale, onOpenDepartures }) {
   );
 }
 
-export default function MapView({ city, t, locale, itinerary, onClearItinerary, getLocation, locating, onOpenDepartures }) {
+export default function MapView({ city, t, lang, locale, itinerary, onClearItinerary, getLocation, locating, onOpenDepartures }) {
   const [userPos, setUserPos] = useState(null);
-  const [needZoom, setNeedZoom] = useState(true);
+  const [area, setArea] = useState({ needZoom: true, outside: false });
+  const [searchToken, setSearchToken] = useState(0);
 
   const lines = useMemo(() => (itinerary?.legs || []).map(leg => ({
-    points: leg.legGeometry?.points ? decodePolyline(leg.legGeometry.points, leg.legGeometry.precision || 6) : [[leg.from.lat, leg.from.lon], [leg.to.lat, leg.to.lon]],
+    points: leg.legGeometry?.coords
+      || (leg.legGeometry?.points ? decodePolyline(leg.legGeometry.points, leg.legGeometry.precision || 6) : [[leg.from.lat, leg.from.lon], [leg.to.lat, leg.to.lon]]),
     color: leg.mode === 'WALK' ? '#94a3b8' : leg.routeColor ? `#${leg.routeColor}` : MODE_COLOR[modeGroup(leg.mode)],
     walk: leg.mode === 'WALK'
   })), [itinerary]);
@@ -133,7 +152,7 @@ export default function MapView({ city, t, locale, itinerary, onClearItinerary, 
             className="map-tiles-dark"
           />
           <FitTo center={bounds ? null : center} bounds={bounds} />
-          <StopsLayer t={t} locale={locale} onOpenDepartures={onOpenDepartures} onZoomInfo={setNeedZoom} />
+          <StopsLayer t={t} locale={locale} lang={lang} onOpenDepartures={onOpenDepartures} onAreaInfo={setArea} searchToken={searchToken} />
           {lines.map((l, i) => (
             <Polyline key={i} positions={l.points} pathOptions={{ color: l.color, weight: l.walk ? 4 : 6, dashArray: l.walk ? '4 8' : null, opacity: 0.95 }} />
           ))}
@@ -153,7 +172,14 @@ export default function MapView({ city, t, locale, itinerary, onClearItinerary, 
           </button>
         </div>
 
-        {needZoom && !itinerary && (
+        {area.outside && !itinerary ? (
+          <button
+            onClick={() => setSearchToken(n => n + 1)}
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[500] px-3.5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 border border-indigo-400 text-xs font-semibold text-white whitespace-nowrap shadow-lg"
+          >
+            {t.map.searchHere}
+          </button>
+        ) : area.needZoom && !itinerary && (
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[500] px-3 py-1.5 rounded-full bg-slate-900/95 border border-slate-700 text-xs text-slate-300 whitespace-nowrap">
             {t.map.zoomIn}
           </div>

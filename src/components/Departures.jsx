@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LocateFixed, Building2, RefreshCw, Radio, Accessibility, AlertCircle, Loader2 } from 'lucide-react';
 import PlaceInput from './PlaceInput';
-import { departures as fetchDepartures, dedupeDepartures, modeGroup, MODE_ICON, MODE_COLOR, formatTime, delayMinutes, minutesUntil } from '../services/transit';
+import { departures as fetchDepartures, refreshIntervalFor } from '../services/provider';
+import { dedupeDepartures, modeGroup, MODE_ICON, MODE_COLOR, formatTime, delayMinutes, minutesUntil } from '../services/transit';
 import { trackAdAction } from '../services/monetization';
 import { fmt } from '../data/translations';
 
@@ -17,6 +18,7 @@ export default function Departures({ city, cityLabel, t, lang, locale, getLocati
   const [error, setError] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [refreshMs, setRefreshMs] = useState(REFRESH_MS);
 
   useEffect(() => {
     if (stop) setSource({ type: 'stop', place: stop });
@@ -36,7 +38,8 @@ export default function Departures({ city, cityLabel, t, lang, locale, getLocati
     setLoading(true);
     setError(null);
     try {
-      const list = await fetchDepartures({ ...query, n: 40, signal });
+      const list = await fetchDepartures({ ...query, n: 40, signal, lang });
+      setRefreshMs(refreshIntervalFor(list));
       setItems(dedupeDepartures(list.filter(d => minutesUntil(d.time) >= -1)).sort((a, b) => new Date(a.time) - new Date(b.time)));
       setUpdatedAt(new Date());
     } catch (err) {
@@ -44,17 +47,25 @@ export default function Departures({ city, cityLabel, t, lang, locale, getLocati
     } finally {
       setLoading(false);
     }
-  }, [query, t]);
+  }, [query, t, lang]);
 
   useEffect(() => {
     const ctrl = new AbortController();
     load(ctrl.signal);
-    const timer = setInterval(() => load(), REFRESH_MS);
-    return () => {
-      ctrl.abort();
-      clearInterval(timer);
-    };
+    return () => ctrl.abort();
   }, [load]);
+
+  // Intervallo separato: 30 s con i nostri dati, 90 s con HERE (ogni richiesta HERE ha un costo)
+  useEffect(() => {
+    const timer = setInterval(() => load(), refreshMs);
+    return () => clearInterval(timer);
+  }, [load, refreshMs]);
+
+  const attributions = useMemo(() => {
+    const seen = new Map();
+    items.filter(d => d.source === 'here').forEach(d => (d.attributions || []).forEach(a => seen.set(a.text, a)));
+    return [...seen.values()];
+  }, [items]);
 
   const groups = useMemo(() => [...new Set(items.map(d => modeGroup(d.mode)))], [items]);
   const shown = filter === 'all' ? items : items.filter(d => modeGroup(d.mode) === filter);
@@ -108,7 +119,7 @@ export default function Departures({ city, cityLabel, t, lang, locale, getLocati
             </button>
           </div>
           <p className="text-[11px] text-slate-500">
-            {updatedAt && fmt(t.departures.updated, { t: updatedAt.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) })} · {t.departures.autoRefresh}
+            {updatedAt && fmt(t.departures.updated, { t: updatedAt.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) })} · {fmt(t.departures.autoRefresh, { s: Math.round(refreshMs / 1000) })}
           </p>
           {groups.length > 1 && (
             <div className="flex flex-wrap gap-1.5 text-xs">
@@ -164,6 +175,15 @@ export default function Departures({ city, cityLabel, t, lang, locale, getLocati
             );
           })}
         </ul>
+
+        {items.some(d => d.source === 'here') && (
+          <p className="px-4 py-2.5 border-t border-slate-800 text-[11px] text-slate-500">
+            {t.common.dataBy} © HERE
+            {attributions.map(a => (
+              <span key={a.text}> · {a.href ? <a href={a.href} target="_blank" rel="noreferrer" className="underline">{a.text}</a> : a.text}</span>
+            ))}
+          </p>
+        )}
       </div>
     </div>
   );

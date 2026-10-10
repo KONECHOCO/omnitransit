@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, LocateFixed, Loader2, X, Star, Home, Briefcase, Clock } from 'lucide-react';
-import { geocode, MODE_ICON, modeGroup } from '../services/transit';
+import { MODE_ICON, modeGroup } from '../services/transit';
+import { geocode } from '../services/provider';
 import { usePrefs } from '../services/storage';
 
 /**
@@ -35,7 +36,7 @@ export default function PlaceInput({ label, value, onChange, t, lang, near, onUs
       } finally {
         setLoading(false);
       }
-    }, 300);
+    }, 400);
     return () => {
       clearTimeout(timer);
       ctrl.abort();
