@@ -9,6 +9,13 @@ import { lineName, modeGroup, MODE_ICON, MODE_COLOR, formatTime, formatDuration,
 import { usePrefs, updatePrefs, addRecent, isFavorite, toggleFavorite, slimPlace, FREE_FAVORITES_LIMIT } from '../services/storage';
 import { isFeatureUnlocked, unlockWithRewardedVideo, useMonetization, trackAdAction } from '../services/monetization';
 import { fmt } from '../data/translations';
+import { Capacitor } from '@capacitor/core';
+
+/** Percorso nei mezzi pubblici nell'app mappe del telefono: alternativa gratuita quando i dati non arrivano. */
+function mapsUrl(from, to) {
+  if (Capacitor.getPlatform() === 'ios') return `https://maps.apple.com/?saddr=${from.lat},${from.lon}&daddr=${to.lat},${to.lon}&dirflg=r`;
+  return `https://www.google.com/maps/dir/?api=1&origin=${from.lat},${from.lon}&destination=${to.lat},${to.lon}&travelmode=transit`;
+}
 
 const SORTS = {
   fastest: (a, b) => a.duration - b.duration || new Date(a.startTime) - new Date(b.startTime),
@@ -166,7 +173,14 @@ export default function RoutePlanner({ city, t, lang, locale, getLocation, locat
         </div>
 
         {error && (
-          <p className="flex items-center gap-2 text-xs text-rose-300"><AlertCircle className="w-4 h-4" />{error}</p>
+          <div className="flex flex-wrap items-center gap-3 text-xs text-rose-300">
+            <span className="flex items-center gap-2"><AlertCircle className="w-4 h-4" />{error}</span>
+            {from && to && (
+              <a href={mapsUrl(from, to)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 text-slate-100 font-semibold">
+                {t.planner.openInMaps}<ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
         )}
 
         <button
@@ -200,7 +214,14 @@ export default function RoutePlanner({ city, t, lang, locale, getLocation, locat
           </div>
 
           {itineraries.length === 0 ? (
-            <div className="glass-panel rounded-2xl p-6 border border-slate-800 text-sm text-slate-300 text-center">{t.planner.noResults}</div>
+            <div className="glass-panel rounded-2xl p-6 border border-slate-800 text-sm text-slate-300 text-center space-y-3">
+              <p>{t.planner.noResults}</p>
+              {from && to && (
+                <a href={mapsUrl(from, to)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 text-slate-100 text-xs font-semibold">
+                  {t.planner.openInMaps}<ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
           ) : (
             <div className="space-y-3">
               {itineraries.map(it => (
