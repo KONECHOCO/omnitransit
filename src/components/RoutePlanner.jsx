@@ -1,390 +1,348 @@
-import React, { useState } from 'react';
-import { 
-  MapPin, 
-  Navigation, 
-  ArrowUpDown, 
-  Clock, 
-  DollarSign, 
-  Leaf, 
-  CloudRain, 
-  Accessibility, 
-  Zap, 
-  Bus, 
-  Train, 
-  ChevronDown, 
-  ChevronUp, 
-  Ticket, 
-  AlertCircle,
-  ArrowRight,
-  ShieldCheck,
-  Check
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowUpDown, Navigation, Zap, Clock, Repeat, Footprints, Accessibility, ChevronDown, ChevronUp,
+  Map as MapIcon, Star, Home, Briefcase, ExternalLink, AlertCircle, Loader2, Radio
 } from 'lucide-react';
-import { translations } from '../data/translations';
-import confetti from 'canvas-confetti';
+import PlaceInput from './PlaceInput';
+import { planTrip, modeGroup, MODE_ICON, MODE_COLOR, formatTime, formatDuration, delayMinutes, walkSeconds } from '../services/transit';
+import { usePrefs, updatePrefs, addRecent, isFavorite, toggleFavorite, slimPlace, FREE_FAVORITES_LIMIT } from '../services/storage';
+import { isFeatureUnlocked, unlockWithRewardedVideo, useMonetization, trackAdAction } from '../services/monetization';
+import { fmt } from '../data/translations';
 
-export default function RoutePlanner({ 
-  activeCity, 
-  currentLang, 
-  onBuyTicket, 
-  onShowRouteOnMap 
-}) {
-  const t = translations[currentLang] || translations.it;
+const SORTS = {
+  fastest: (a, b) => a.duration - b.duration || new Date(a.startTime) - new Date(b.startTime),
+  transfers: (a, b) => a.transfers - b.transfers || a.duration - b.duration,
+  walking: (a, b) => walkSeconds(a) - walkSeconds(b) || a.duration - b.duration
+};
 
-  // Pre-fill default origin and dest based on active city
-  const defaultOrigin = activeCity.sampleStops[0]?.name || "Stazione FS";
-  const defaultDest = activeCity.sampleStops[1]?.name || "Piazza Cavalli";
+function toLocalInput(date) {
+  const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return d.toISOString().slice(0, 16);
+}
 
-  const [origin, setOrigin] = useState(defaultOrigin);
-  const [destination, setDestination] = useState(defaultDest);
-  const [activeStrategy, setActiveStrategy] = useState('fastest');
-  const [activeModeFilter, setActiveModeFilter] = useState('all');
-  const [expandedRouteId, setExpandedRouteId] = useState(activeCity.sampleRoutes[0]?.id || null);
-  const [searchLoading, setSearchLoading] = useState(false);
+export default function RoutePlanner({ city, t, lang, locale, getLocation, locating, onShowOnMap, onOpenPro }) {
+  const prefs = usePrefs();
+  const { rewardedReady } = useMonetization();
+  const [from, setFrom] = useState(null);
+  const [to, setTo] = useState(null);
+  const [timeMode, setTimeMode] = useState('now');
+  const [when, setWhen] = useState(() => toLocalInput(new Date()));
+  const [wheelchair, setWheelchair] = useState(false);
+  const [sort, setSort] = useState('fastest');
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [expanded, setExpanded] = useState(null);
+  const [favNotice, setFavNotice] = useState(false);
 
-  const swapLocations = () => {
-    const temp = origin;
-    setOrigin(destination);
-    setDestination(temp);
+  // Cambiando città i campi si azzerano: i risultati di un'altra città non hanno senso
+  useEffect(() => {
+    setFrom(null);
+    setTo(null);
+    setResult(null);
+  }, [city.id]);
+
+  const near = useMemo(() => ({ lat: city.lat, lon: city.lon }), [city.lat, city.lon]);
+
+  const search = async (overrideTime) => {
+    if (!from || !to) {
+      setError(t.planner.enterBoth);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const time = overrideTime || (timeMode === 'now' ? new Date() : new Date(when));
+      const res = await planTrip(from, to, { time, arriveBy: timeMode === 'arrive' && !overrideTime, wheelchair });
+      setResult(res);
+      setExpanded(null);
+      addRecent(from);
+      addRecent(to);
+      trackAdAction();
+    } catch {
+      setError(t.errors.network);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    setSearchLoading(true);
-    setTimeout(() => {
-      setSearchLoading(false);
-    }, 400);
+  const later = () => {
+    const last = result?.itineraries.reduce((m, it) => (new Date(it.startTime) > m ? new Date(it.startTime) : m), new Date(0));
+    if (last) search(new Date(last.getTime() + 60000));
   };
 
-  const triggerConfetti = () => {
-    confetti({
-      particleCount: 80,
-      spread: 60,
-      origin: { y: 0.7 }
-    });
+  const saveFavorite = async place => {
+    if (isFavorite(place)) {
+      toggleFavorite(place);
+      return;
+    }
+    if (prefs.favorites.length >= FREE_FAVORITES_LIMIT && !isFeatureUnlocked('favorites')) {
+      setFavNotice(true);
+      return;
+    }
+    toggleFavorite(place);
   };
 
-  // Filter routes based on mode & strategy
-  let displayRoutes = activeCity.sampleRoutes || [];
-
-  if (activeStrategy === 'eco') {
-    displayRoutes = [...displayRoutes].sort((a, b) => b.co2SavedKg - a.co2SavedKg);
-  } else if (activeStrategy === 'cheapest') {
-    displayRoutes = [...displayRoutes].sort((a, b) => parseFloat(a.price.replace(/[^0-9.]/g, '')) - parseFloat(b.price.replace(/[^0-9.]/g, '')));
-  } else if (activeStrategy === 'rainSafe') {
-    displayRoutes = [...displayRoutes].sort((a, b) => b.rainSafeScore - a.rainSafeScore);
-  }
+  const itineraries = useMemo(() => [...(result?.itineraries || [])].sort(SORTS[sort]), [result, sort]);
 
   return (
-    <div className="space-y-6">
-      
-      {/* Route Search Form Card */}
-      <div className="glass-panel rounded-2xl p-5 sm:p-6 border border-slate-800 shadow-xl">
-        <form onSubmit={handleSearch} className="space-y-4">
-          
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-            
-            {/* Origin Input */}
-            <div className="md:col-span-5 relative">
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                Partenza
-              </label>
-              <div className="relative">
-                <div className="absolute left-3 top-3 text-indigo-400">
-                  <MapPin className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  value={origin}
-                  onChange={(e) => setOrigin(e.target.value)}
-                  placeholder={t.searchPlaceholderOrigin}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm font-medium"
-                />
-              </div>
-            </div>
-
-            {/* Swap Button */}
-            <div className="md:col-span-2 flex justify-center pt-3 md:pt-0">
-              <button
-                type="button"
-                onClick={swapLocations}
-                title={t.swapLocations}
-                className="p-2.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 hover:text-indigo-400 hover:border-indigo-500 transition-all hover:rotate-180 duration-300"
-              >
-                <ArrowUpDown className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Destination Input */}
-            <div className="md:col-span-5 relative">
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                Destinazione
-              </label>
-              <div className="relative">
-                <div className="absolute left-3 top-3 text-emerald-400">
-                  <Navigation className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  placeholder={t.searchPlaceholderDest}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm font-medium"
-                />
-              </div>
-            </div>
-
-          </div>
-
-          {/* Quick Preset Destination Chips */}
-          <div className="flex items-center space-x-2 overflow-x-auto py-1 text-xs">
-            <span className="text-slate-400 text-[11px]">Consigliati a {activeCity.name}:</span>
-            {activeCity.sampleStops.map((stop) => (
-              <button
-                key={stop.id}
-                type="button"
-                onClick={() => setDestination(stop.name)}
-                className="px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300 hover:border-indigo-500/50 hover:text-white transition-colors whitespace-nowrap"
-              >
-                {stop.type === 'train' ? '🚆' : stop.type === 'metro' ? '🚇' : '🚌'} {stop.name}
-              </button>
-            ))}
-          </div>
-
-          {/* Search CTA */}
-          <div className="flex justify-end pt-2">
-            <button
-              type="submit"
-              disabled={searchLoading}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition-all"
-            >
-              {searchLoading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4" />
-                  <span>{t.findRoutes}</span>
-                </>
-              )}
-            </button>
-          </div>
-
-        </form>
-      </div>
-
-      {/* Algorithmic Strategy Filters */}
-      <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
-        <button
-          onClick={() => setActiveStrategy('fastest')}
-          className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
-            activeStrategy === 'fastest'
-              ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/80 glow-indigo'
-              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Clock className="w-3.5 h-3.5 text-indigo-400" />
-          <span>{t.filters.fastest}</span>
-        </button>
-
-        <button
-          onClick={() => setActiveStrategy('cheapest')}
-          className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
-            activeStrategy === 'cheapest'
-              ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/80 glow-emerald'
-              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-          <span>{t.filters.cheapest}</span>
-        </button>
-
-        <button
-          onClick={() => setActiveStrategy('eco')}
-          className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
-            activeStrategy === 'eco'
-              ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/80 glow-emerald'
-              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Leaf className="w-3.5 h-3.5 text-emerald-400" />
-          <span>{t.filters.eco}</span>
-        </button>
-
-        <button
-          onClick={() => setActiveStrategy('rainSafe')}
-          className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
-            activeStrategy === 'rainSafe'
-              ? 'bg-cyan-600/20 text-cyan-300 border-cyan-500/80'
-              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <CloudRain className="w-3.5 h-3.5 text-cyan-400" />
-          <span>{t.filters.rainSafe}</span>
-        </button>
-
-        <button
-          onClick={() => setActiveStrategy('accessible')}
-          className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
-            activeStrategy === 'accessible'
-              ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/80'
-              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Accessibility className="w-3.5 h-3.5 text-indigo-400" />
-          <span>{t.filters.accessible}</span>
-        </button>
-      </div>
-
-      {/* Route Cards Results List */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-          <span>{displayRoutes.length} {t.routes.resultsFound} per {activeCity.name}</span>
-          <span className="flex items-center space-x-1 text-emerald-400">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>GTFS Live Verified</span>
-          </span>
+    <div className="space-y-5">
+      <form
+        onSubmit={e => { e.preventDefault(); search(); }}
+        className="glass-panel rounded-2xl p-4 sm:p-6 border border-slate-800 shadow-xl space-y-4"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 md:items-end">
+          <PlaceInput label={t.planner.from} value={from} onChange={setFrom} t={t} lang={lang} near={near} onUseLocation={getLocation} locating={locating} />
+          <button
+            type="button"
+            onClick={() => { setFrom(to); setTo(from); }}
+            title={t.planner.swap}
+            aria-label={t.planner.swap}
+            className="justify-self-center p-2.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 hover:text-indigo-400 hover:border-indigo-500 transition-all md:mb-1"
+          >
+            <ArrowUpDown className="w-4 h-4 md:rotate-90" />
+          </button>
+          <PlaceInput label={t.planner.to} value={to} onChange={setTo} t={t} lang={lang} near={near} onUseLocation={getLocation} locating={locating} icon={<Navigation className="w-4 h-4 text-emerald-400" />} />
         </div>
 
-        {displayRoutes.map((route) => {
-          const isExpanded = expandedRouteId === route.id;
-          return (
-            <div
-              key={route.id}
-              className={`glass-panel rounded-2xl border transition-all duration-300 ${
-                isExpanded ? 'border-indigo-500/60 bg-slate-900/90 shadow-xl' : 'border-slate-800 hover:border-slate-700'
-              }`}
-            >
-              {/* Card Summary Bar */}
-              <div 
-                className="p-5 cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
-                onClick={() => setExpandedRouteId(isExpanded ? null : route.id)}
-              >
-                
-                {/* Left: Duration, Transfers & Operator */}
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-2xl font-extrabold text-white font-heading">
-                      {route.durationMinutes} min
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                      {route.transfers === 0 ? 'Diretto (0 cambi)' : `${route.transfers} ${t.routes.transfers}`}
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      -{route.co2SavedKg} kg CO2
-                    </span>
-                  </div>
+        {/* Scorciatoie e salvataggio */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {prefs.home && (
+            <button type="button" onClick={() => setTo(prefs.home)} className="chip"><Home className="w-3.5 h-3.5 text-amber-400" />{t.planner.home}</button>
+          )}
+          {prefs.work && (
+            <button type="button" onClick={() => setTo(prefs.work)} className="chip"><Briefcase className="w-3.5 h-3.5 text-amber-400" />{t.planner.work}</button>
+          )}
+          {to && (
+            <>
+              <button type="button" onClick={() => saveFavorite(to)} className="chip">
+                <Star className={`w-3.5 h-3.5 ${isFavorite(to) ? 'fill-amber-400 text-amber-400' : 'text-slate-400'}`} />
+                {isFavorite(to) ? t.planner.remove : t.planner.save}
+              </button>
+              <button type="button" onClick={() => updatePrefs({ home: slimPlace(to) })} className="chip">{t.planner.setHome}</button>
+              <button type="button" onClick={() => updatePrefs({ work: slimPlace(to) })} className="chip">{t.planner.setWork}</button>
+            </>
+          )}
+        </div>
 
-                  {/* Modes & Operator Badge */}
-                  <div className="flex items-center space-x-2 text-xs">
-                    <span
-                      className="px-2 py-0.5 rounded font-bold text-white text-[11px]"
-                      style={{ backgroundColor: route.operatorColor }}
-                    >
-                      {route.operator}
-                    </span>
-                    <span className="text-slate-400">|</span>
-                    <span className="text-slate-300 font-medium">
-                      {route.origin} → {route.destination}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Right: Price & Quick Action */}
-                <div className="flex items-center justify-between md:justify-end space-x-4">
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-emerald-400 font-heading">
-                      {route.price}
-                    </div>
-                    <div className="text-[10px] text-slate-400">
-                      Integrato {activeCity.name}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onBuyTicket(route);
-                        triggerConfetti();
-                      }}
-                      className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs flex items-center space-x-1.5 shadow-md shadow-emerald-600/30 transition-all"
-                    >
-                      <Ticket className="w-3.5 h-3.5" />
-                      <span>{t.routes.buyTicketBtn}</span>
-                    </button>
-
-                    <button className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800">
-                      {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Step-by-Step Accordion Content */}
-              {isExpanded && (
-                <div className="px-5 pb-5 pt-2 border-t border-slate-800/80 bg-slate-950/40 rounded-b-2xl space-y-4">
-                  <h5 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider flex items-center space-x-1.5">
-                    <ArrowRight className="w-3.5 h-3.5" />
-                    <span>{t.routes.stepByStep}</span>
-                  </h5>
-
-                  <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
-                    {route.steps.map((step, sIdx) => (
-                      <div key={sIdx} className="relative flex items-start space-x-3 text-xs">
-                        
-                        {/* Mode Node Dot Icon */}
-                        <div className="absolute -left-6 top-0 w-5 h-5 rounded-full bg-slate-900 border-2 border-indigo-500 flex items-center justify-center text-[10px] text-indigo-300">
-                          {step.mode === 'walk' ? '🚶' : step.mode === 'bus' ? '🚌' : step.mode === 'metro' ? '🚇' : '🚆'}
-                        </div>
-
-                        <div className="flex-1 bg-slate-900/80 border border-slate-800/80 p-3 rounded-xl space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-white">
-                              {step.title}
-                            </span>
-                            {step.duration && (
-                              <span className="text-slate-400 font-mono text-[11px]">
-                                {step.duration}
-                              </span>
-                            )}
-                          </div>
-
-                          {step.line && (
-                            <div className="inline-block px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-semibold text-[10px] border border-indigo-500/30">
-                              {step.line}
-                            </div>
-                          )}
-
-                          {step.status && (
-                            <p className="text-[11px] text-emerald-400 font-medium">
-                              ● {step.status}
-                            </p>
-                          )}
-                        </div>
-
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Show on Map CTA */}
-                  <div className="pt-2 flex justify-end">
-                    <button
-                      onClick={() => onShowRouteOnMap(route)}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold underline flex items-center space-x-1"
-                    >
-                      <span>Visualizza sulla Mappa Radar Live</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                </div>
+        {favNotice && (
+          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 space-y-2">
+            <p>{fmt(t.planner.favLimit, { n: FREE_FAVORITES_LIMIT })}</p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => { setFavNotice(false); onOpenPro(); }} className="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold">Pro</button>
+              {rewardedReady && (
+                <button type="button" onClick={async () => { if (await unlockWithRewardedVideo('favorites')) { setFavNotice(false); toggleFavorite(to); } }} className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 font-semibold">{t.planner.watchVideo}</button>
               )}
-
             </div>
-          );
-        })}
-      </div>
+          </div>
+        )}
 
+        {/* Orario e opzioni */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {['now', 'depart', 'arrive'].map(m => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setTimeMode(m)}
+              className={`px-3 py-1.5 rounded-lg font-semibold border ${timeMode === m ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-400'}`}
+            >
+              {m === 'now' ? t.planner.now : m === 'depart' ? t.planner.departAt : t.planner.arriveBy}
+            </button>
+          ))}
+          {timeMode !== 'now' && (
+            <input
+              type="datetime-local"
+              value={when}
+              onChange={e => setWhen(e.target.value)}
+              className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white [color-scheme:dark]"
+            />
+          )}
+          <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 cursor-pointer">
+            <input type="checkbox" checked={wheelchair} onChange={e => setWheelchair(e.target.checked)} className="accent-indigo-500" />
+            <Accessibility className="w-3.5 h-3.5 text-indigo-400" />
+            {t.planner.wheelchair}
+          </label>
+        </div>
+
+        {error && (
+          <p className="flex items-center gap-2 text-xs text-rose-300"><AlertCircle className="w-4 h-4" />{error}</p>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full sm:w-auto sm:float-right px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 disabled:opacity-60"
+        >
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-4 h-4" />}
+          {t.planner.search}
+        </button>
+        <div className="clear-both" />
+      </form>
+
+      {result && (
+        <>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            {[
+              ['fastest', Clock, t.planner.sortFastest],
+              ['transfers', Repeat, t.planner.sortTransfers],
+              ['walking', Footprints, t.planner.sortWalking]
+            ].map(([key, Icon, label]) => (
+              <button
+                key={key}
+                onClick={() => setSort(key)}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border whitespace-nowrap ${sort === key ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/80' : 'bg-slate-900 border-slate-800 text-slate-400'}`}
+              >
+                <Icon className="w-3.5 h-3.5" />{label}
+              </button>
+            ))}
+            <span className="ml-auto text-xs text-slate-400 whitespace-nowrap">{fmt(t.planner.results, { n: itineraries.length })}</span>
+          </div>
+
+          {itineraries.length === 0 ? (
+            <div className="glass-panel rounded-2xl p-6 border border-slate-800 text-sm text-slate-300 text-center">{t.planner.noResults}</div>
+          ) : (
+            <div className="space-y-3">
+              {itineraries.map(it => (
+                <ItineraryCard
+                  key={it.id || it.startTime}
+                  it={it}
+                  t={t}
+                  locale={locale}
+                  open={expanded === (it.id || it.startTime)}
+                  onToggle={() => setExpanded(expanded === (it.id || it.startTime) ? null : it.id || it.startTime)}
+                  onShowOnMap={() => onShowOnMap(it)}
+                  destName={to?.name}
+                />
+              ))}
+              <button onClick={later} disabled={loading} className="w-full py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white">
+                {t.planner.later} →
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function LineBadge({ leg }) {
+  const g = modeGroup(leg.mode);
+  const bg = leg.routeColor ? `#${leg.routeColor}` : MODE_COLOR[g];
+  const fg = leg.routeTextColor ? `#${leg.routeTextColor}` : '#fff';
+  const name = leg.displayName || leg.routeShortName || '';
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-bold whitespace-nowrap" style={{ backgroundColor: bg, color: fg }}>
+      <span>{MODE_ICON[g]}</span>
+      {name && <span className="max-w-[90px] truncate">{name}</span>}
+    </span>
+  );
+}
+
+function TimeWithDelay({ actual, scheduled, tz, locale, realTime, t }) {
+  const d = realTime ? delayMinutes(actual, scheduled) : 0;
+  return (
+    <span className="font-mono">
+      {formatTime(actual, tz, locale)}
+      {realTime && d > 0 && <span className="ml-1 text-amber-400">{fmt(t.common.delay, { n: d })}</span>}
+    </span>
+  );
+}
+
+function ItineraryCard({ it, t, locale, open, onToggle, onShowOnMap, destName }) {
+  const first = it.legs[0];
+  const last = it.legs[it.legs.length - 1];
+  const tz = first.from.tz;
+  const walkMin = Math.round(walkSeconds(it) / 60);
+  const transit = it.legs.filter(l => l.mode !== 'WALK');
+  const hasRealtime = transit.some(l => l.realTime);
+  const cancelled = transit.some(l => l.cancelled);
+
+  return (
+    <div className={`glass-panel rounded-2xl border transition-colors ${open ? 'border-indigo-500/60' : 'border-slate-800'} ${cancelled ? 'opacity-60' : ''}`}>
+      <button onClick={onToggle} className="w-full text-left p-4 space-y-2.5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-lg font-extrabold text-white font-heading">
+              {formatTime(it.startTime, tz, locale)} – {formatTime(it.endTime, last.to.tz, locale)}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400 mt-0.5">
+              <span className="text-slate-200 font-semibold">{formatDuration(it.duration, t)}</span>
+              <span>·</span>
+              <span>{it.transfers === 0 ? t.planner.direct : it.transfers === 1 ? t.planner.oneTransfer : fmt(t.planner.transfers, { n: it.transfers })}</span>
+              {walkMin > 0 && (<><span>·</span><span>{fmt(t.planner.walk, { n: walkMin })}</span></>)}
+              {hasRealtime && (<span className="inline-flex items-center gap-1 text-emerald-400"><Radio className="w-3 h-3" />{t.common.live}</span>)}
+              {cancelled && <span className="text-rose-400 font-bold">{t.common.cancelled}</span>}
+            </div>
+          </div>
+          {open ? <ChevronUp className="w-5 h-5 text-slate-400 shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 shrink-0" />}
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          {it.legs.map((leg, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <span className="text-slate-600 text-xs">›</span>}
+              {leg.mode === 'WALK' ? (
+                <span className="text-xs text-slate-400">🚶{Math.round(leg.duration / 60)}′</span>
+              ) : (
+                <LineBadge leg={leg} />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 pt-3 border-t border-slate-800/80 space-y-3">
+          <ol className="relative pl-5 space-y-3 before:absolute before:left-[7px] before:top-1 before:bottom-1 before:w-0.5 before:bg-slate-800">
+            {it.legs.map((leg, i) => (
+              <li key={i} className="relative text-xs">
+                <span
+                  className="absolute -left-5 top-0.5 w-3.5 h-3.5 rounded-full border-2 border-slate-950"
+                  style={{ backgroundColor: leg.routeColor ? `#${leg.routeColor}` : MODE_COLOR[modeGroup(leg.mode)] }}
+                />
+                {leg.mode === 'WALK' ? (
+                  <div className="text-slate-300">
+                    🚶 {fmt(t.planner.walkTo, { x: leg.to.name === 'END' ? destName || '' : leg.to.name })}
+                    <span className="text-slate-500"> · {Math.round(leg.duration / 60)} {t.common.min}{leg.distance ? ` · ${Math.round(leg.distance)} m` : ''}</span>
+                  </div>
+                ) : (
+                  <div className="space-y-1 bg-slate-900/70 border border-slate-800 rounded-xl p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <LineBadge leg={leg} />
+                      {leg.headsign && <span className="text-slate-200 font-semibold">{fmt(t.planner.toward, { x: leg.headsign })}</span>}
+                    </div>
+                    <div className="text-slate-300">
+                      <TimeWithDelay actual={leg.startTime} scheduled={leg.scheduledStartTime} tz={leg.from.tz} locale={locale} realTime={leg.realTime} t={t} />
+                      {' '}{leg.from.name}{leg.from.track ? ` · ${fmt(t.common.track, { n: leg.from.track })}` : ''}
+                    </div>
+                    {leg.intermediateStops?.length > 0 && (
+                      <div className="text-slate-500">{fmt(t.planner.stops, { n: leg.intermediateStops.length + 1 })}</div>
+                    )}
+                    <div className="text-slate-300">
+                      <TimeWithDelay actual={leg.endTime} scheduled={leg.scheduledEndTime} tz={leg.to.tz} locale={locale} realTime={leg.realTime} t={t} />
+                      {' '}<span className="font-semibold text-white">{fmt(t.planner.getOff, { x: leg.to.name })}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-slate-500">
+                      <span>{leg.agencyName}</span>
+                      <span className={leg.realTime ? 'text-emerald-400' : ''}>{leg.realTime ? t.common.live : t.common.scheduled}</span>
+                      {leg.cancelled && <span className="text-rose-400 font-bold">{t.common.cancelled}</span>}
+                      {(leg.agencyFareUrl || leg.routeUrl || leg.agencyUrl) && (
+                        <a href={leg.agencyFareUrl || leg.routeUrl || leg.agencyUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300">
+                          {t.planner.operatorSite}<ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+          <div className="flex justify-end">
+            <button onClick={onShowOnMap} className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300">
+              <MapIcon className="w-4 h-4" />{t.planner.showMap}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

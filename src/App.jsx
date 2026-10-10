@@ -1,198 +1,143 @@
-import React, { useState } from 'react';
-import Navbar from './components/Navbar';
-import CitySelectorModal from './components/CitySelectorModal';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Info } from 'lucide-react';
+import Header from './components/Header';
+import CityModal from './components/CityModal';
 import RoutePlanner from './components/RoutePlanner';
-import LiveMap from './components/LiveMap';
-import DepartureBoard from './components/DepartureBoard';
-import TicketWallet from './components/TicketWallet';
-import TaxiHub from './components/TaxiHub';
-import DisruptionReporter from './components/DisruptionReporter';
-import EcoDashboard from './components/EcoDashboard';
-import OfflineModal from './components/OfflineModal';
+import Departures from './components/Departures';
+import MapView from './components/MapView';
+import Tickets from './components/Tickets';
+import Taxi from './components/Taxi';
+import ProModal from './components/ProModal';
+import AdBanner from './components/AdBanner';
 
-import { citiesData, mockTickets } from './data/transitData';
-import { translations } from './data/translations';
-import { Bus, MapPin, Globe, Sparkles } from 'lucide-react';
+import { cities, cityName } from './data/cities';
+import { translations, detectLanguage, fmt } from './data/translations';
+import { usePrefs, updatePrefs } from './services/storage';
+import { getCurrentPosition } from './services/location';
+import { initMonetization, trackAdAction } from './services/monetization';
+
+const LOCALES = { it: 'it-IT', en: 'en-GB', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', ja: 'ja-JP' };
 
 export default function App() {
-  const [currentLang, setCurrentLang] = useState('it');
-  const [activeCity, setActiveCity] = useState(citiesData[0]); // Default: Piacenza
+  const prefs = usePrefs();
+  const lang = prefs.lang || detectLanguage();
+  const t = translations[lang] || translations.en;
+  const locale = LOCALES[lang] || 'en-GB';
+
+  const city = useMemo(
+    () => (prefs.customCity && prefs.cityId === prefs.customCity.id ? prefs.customCity : cities.find(c => c.id === prefs.cityId)) || cities[0],
+    [prefs.cityId, prefs.customCity]
+  );
+  const cityLabel = city.custom ? city.name : cityName(city, lang);
+
   const [activeTab, setActiveTab] = useState('planner');
-  
-  const [tickets, setTickets] = useState(mockTickets);
   const [cityModalOpen, setCityModalOpen] = useState(false);
-  const [offlineModalOpen, setOfflineModalOpen] = useState(false);
-  const [activeRouteOnMap, setActiveRouteOnMap] = useState(null);
+  const [proOpen, setProOpen] = useState(false);
+  const [mapItinerary, setMapItinerary] = useState(null);
+  const [selectedStop, setSelectedStop] = useState(null);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState(false);
 
-  const t = translations[currentLang] || translations.it;
+  useEffect(() => {
+    initMonetization();
+  }, []);
 
-  const handleBuyTicketFromRoute = (route) => {
-    const newTicket = {
-      id: `tck-${Date.now().toString().slice(-4)}`,
-      cityName: activeCity.name,
-      countryFlag: activeCity.flag,
-      operator: route.operator,
-      type: `Biglietto Integrato Multimodale`,
-      price: route.price,
-      purchaseDate: new Date().toLocaleString(),
-      expiresAt: 'Valido 90 Minuti',
-      status: 'Active',
-      qrCodeData: `OMNI-${activeCity.name.toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`,
-      remainingMinutes: 90,
-      zone: `Zona Integrata ${activeCity.name}`
-    };
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
-    setTickets([newTicket, ...tickets]);
-    setActiveTab('wallet');
+  const getLocation = useCallback(async () => {
+    setLocating(true);
+    setLocationError(false);
+    try {
+      const pos = await getCurrentPosition();
+      return { ...pos, name: t.planner.myLocation };
+    } catch {
+      setLocationError(true);
+      return null;
+    } finally {
+      setLocating(false);
+    }
+  }, [t]);
+
+  const selectCity = c => {
+    updatePrefs(c.custom ? { cityId: c.id, customCity: c } : { cityId: c.id });
+    setMapItinerary(null);
+    setSelectedStop(null);
+    trackAdAction();
   };
 
-  const handleBuyNewTicket = (ticketObj) => {
-    setTickets([ticketObj, ...tickets]);
-  };
-
-  const handleShowRouteOnMap = (route) => {
-    setActiveRouteOnMap(route);
-    setActiveTab('radar');
-  };
+  const common = { city, cityLabel, t, lang, locale, getLocation, locating };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-      
-      {/* Top Main Navbar */}
-      <Navbar
-        currentLang={currentLang}
-        setCurrentLang={setCurrentLang}
-        activeCity={activeCity}
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+      <Header
+        t={t}
+        lang={lang}
+        setLang={code => updatePrefs({ lang: code })}
+        cityLabel={cityLabel}
+        cityFlag={city.flag}
         openCityModal={() => setCityModalOpen(true)}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        ticketCount={tickets.filter(t => t.status === 'Active').length}
-        openWalletModal={() => setActiveTab('wallet')}
-        openOfflineModal={() => setOfflineModalOpen(true)}
+        onOpenPro={() => setProOpen(true)}
       />
 
-      {/* Main Body View */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        
-        {/* City Greeting Banner */}
-        <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-indigo-950/40 via-slate-900 to-slate-900">
-          <div className="flex items-center space-x-3">
-            <span className="text-3xl sm:text-4xl">{activeCity.flag}</span>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h2 className="text-lg sm:text-xl font-bold text-white font-heading">
-                  Rete Mobilità Integrata {activeCity.name}
-                </h2>
-                <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold border border-indigo-500/30">
-                  {activeCity.country}
-                </span>
-              </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                {activeCity.description}
-              </p>
-            </div>
-          </div>
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-5 space-y-4">
+        {city.localBusMissing && activeTab !== 'tickets' && (
+          <p className="flex gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
+            <Info className="w-4 h-4 shrink-0" />{fmt(t.city.localBusMissing, { operator: city.localBusMissing })}
+          </p>
+        )}
+        {locationError && (
+          <p className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-200">{t.errors.location}</p>
+        )}
 
-          <button
-            onClick={() => setCityModalOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700/80 hover:border-indigo-500 text-xs font-semibold text-slate-200 flex items-center justify-center space-x-1.5 transition-all self-start sm:self-center"
-          >
-            <Globe className="w-4 h-4 text-indigo-400" />
-            <span>Cambia Paese / Città</span>
-          </button>
-        </div>
-
-        {/* Dynamic Tab Content View */}
-        {activeTab === 'planner' && (
+        {/* Il planner resta montato per non perdere la ricerca quando si apre la mappa */}
+        <div hidden={activeTab !== 'planner'}>
           <RoutePlanner
-            activeCity={activeCity}
-            currentLang={currentLang}
-            onBuyTicket={handleBuyTicketFromRoute}
-            onShowRouteOnMap={handleShowRouteOnMap}
+            {...common}
+            onShowOnMap={it => { setMapItinerary(it); setActiveTab('map'); }}
+            onOpenPro={() => setProOpen(true)}
+          />
+        </div>
+        {activeTab === 'departures' && (
+          <Departures {...common} stop={selectedStop} onStopChange={setSelectedStop} />
+        )}
+        {activeTab === 'map' && (
+          <MapView
+            {...common}
+            itinerary={mapItinerary}
+            onClearItinerary={() => setMapItinerary(null)}
+            onOpenDepartures={stop => { setSelectedStop(stop); setActiveTab('departures'); trackAdAction(); }}
           />
         )}
-
-        {activeTab === 'radar' && (
-          <LiveMap
-            activeCity={activeCity}
-            currentLang={currentLang}
-            activeRoute={activeRouteOnMap}
-          />
-        )}
-
-        {activeTab === 'board' && (
-          <DepartureBoard
-            activeCity={activeCity}
-            currentLang={currentLang}
-          />
-        )}
-
-        {activeTab === 'wallet' && (
-          <TicketWallet
-            tickets={tickets}
-            onBuyNewTicket={handleBuyNewTicket}
-            currentLang={currentLang}
-            activeCity={activeCity}
-          />
-        )}
-
-        {activeTab === 'taxi' && (
-          <TaxiHub
-            activeCity={activeCity}
-            currentLang={currentLang}
-          />
-        )}
-
-        {activeTab === 'disruptions' && (
-          <DisruptionReporter
-            activeCity={activeCity}
-            currentLang={currentLang}
-          />
-        )}
-
-        {activeTab === 'eco' && (
-          <EcoDashboard
-            currentLang={currentLang}
-          />
-        )}
-
+        {activeTab === 'tickets' && <Tickets {...common} />}
+        {activeTab === 'taxi' && <Taxi {...common} />}
       </main>
 
-      {/* City Selector Modal */}
-      <CitySelectorModal
-        isOpen={cityModalOpen}
-        onClose={() => setCityModalOpen(false)}
-        activeCity={activeCity}
-        onSelectCity={(city) => {
-          setActiveCity(city);
-          setActiveRouteOnMap(null);
-        }}
-        currentLang={currentLang}
-      />
-
-      {/* Offline Downloader Modal */}
-      <OfflineModal
-        isOpen={offlineModalOpen}
-        onClose={() => setOfflineModalOpen(false)}
-        activeCity={activeCity}
-      />
-
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-950 py-6 mt-12">
-        <div className="max-w-7xl mx-auto px-4 text-center space-y-2 text-xs text-slate-500">
-          <div className="flex items-center justify-center space-x-2 text-slate-400 font-semibold">
-            <Bus className="w-4 h-4 text-indigo-400" />
-            <span>OmniTransit Global mobility super app</span>
-          </div>
-          <p>
-            Riconciliazione e aggregazione unificata per Bus SETA Piacenza, RATP Parigi, TfL Londra, ATM Milano, MTA New York, Trenitalia e Taxi locali.
-          </p>
-          <p className="text-[11px] text-slate-600">
-            Powered by GTFS-Realtime API Standard & Dynamic Multi-Language i18n Engine.
-          </p>
-        </div>
+      <footer className="border-t border-slate-800/80 py-5 pb-16 text-center text-[11px] text-slate-500 space-y-1 px-4">
+        <p>{t.footer.data} {t.footer.disclaimer}</p>
+        <p className="space-x-3">
+          <a href="https://transitous.org/sources/" target="_blank" rel="noreferrer" className="underline hover:text-slate-300">{t.footer.sources}</a>
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline hover:text-slate-300">© OpenStreetMap</a>
+          <a href="privacy.html" target="_blank" rel="noreferrer" className="underline hover:text-slate-300">{t.footer.privacy}</a>
+        </p>
       </footer>
 
+      <AdBanner t={t} onUpgrade={() => setProOpen(true)} />
+
+      <CityModal
+        isOpen={cityModalOpen}
+        onClose={() => setCityModalOpen(false)}
+        activeCity={city}
+        onSelect={selectCity}
+        t={t}
+        lang={lang}
+        getLocation={getLocation}
+        locating={locating}
+      />
+      <ProModal isOpen={proOpen} onClose={() => setProOpen(false)} t={t} />
     </div>
   );
 }

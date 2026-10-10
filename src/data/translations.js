@@ -1,530 +1,118 @@
+/** Tutti i testi dell'interfaccia. Le chiavi devono esistere in ogni lingua. */
+export const LANGUAGES = [
+  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
+  { code: 'en', name: 'English', flag: '🇬🇧' },
+  { code: 'fr', name: 'Français', flag: '🇫🇷' },
+  { code: 'es', name: 'Español', flag: '🇪🇸' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+  { code: 'ja', name: '日本語', flag: '🇯🇵' }
+];
+
+/** Sostituisce {chiave} con i valori passati. */
+export function fmt(str, vars = {}) {
+  return String(str).replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? `{${k}}`));
+}
+
+export function detectLanguage() {
+  const nav = (typeof navigator !== 'undefined' && (navigator.languages?.[0] || navigator.language)) || 'en';
+  const code = nav.slice(0, 2).toLowerCase();
+  return LANGUAGES.some(l => l.code === code) ? code : 'en';
+}
+
 export const translations = {
   it: {
-    appName: "OmniTransit",
-    tagline: "Il Trasporto globale in un'unica applicazione",
-    subtagline: "Bus, Metro, Treni, Tram e Taxi di tutti i Paesi e città.",
-    searchPlaceholderOrigin: "Da dove parti? (es. Stazione FS, Piazza Cavalli...)",
-    searchPlaceholderDest: "Dove vuoi andare? (es. Ospedale, Parigi Gare de Lyon...)",
-    swapLocations: "Inverti origine e destinazione",
-    findRoutes: "Trova Itinerari",
-    tabs: {
-      planner: "Pianifica Viaggio",
-      radar: "Mappa & Radar Live",
-      board: "Tabellone Orari",
-      wallet: "Biglietti & Wallet",
-      taxi: "Hub Taxi & Scooter",
-      disruptions: "Avvisi & Community",
-      eco: "Eco Impact"
-    },
-    filters: {
-      fastest: "Più Veloce",
-      cheapest: "Più Economico",
-      eco: "Eco Green",
-      rainSafe: "Coperto / Pioggia",
-      accessible: "Accessibile 100%"
-    },
-    modes: {
-      bus: "Bus Urbano",
-      metro: "Metropolitana",
-      train: "Treno Regionale / AV",
-      tram: "Tram",
-      taxi: "Taxi & Ride-Hail",
-      scooter: "E-Scooter / Bici",
-      ferry: "Traghetto"
-    },
-    citySelector: {
-      title: "Seleziona Paese e Città",
-      searchCity: "Cerca città o paese...",
-      current: "Città Attiva",
-      operators: "Operatori Integrati"
-    },
-    routes: {
-      resultsFound: "itinerari multimodali trovati",
-      duration: "durata",
-      transfers: "cambi",
-      leavesIn: "Parte tra",
-      onTime: "In orario",
-      delayed: "in ritardo",
-      crowding: "Affollamento",
-      crowdLow: "Basso",
-      crowdMed: "Medio",
-      crowdHigh: "Elevato",
-      co2Saved: "CO2 risparmiata",
-      buyTicketBtn: "Acquista Titolo",
-      stepByStep: "Dettaglio Passaggio per Passaggio"
-    },
-    wallet: {
-      title: "Wallet Unificato Pass & Biglietti",
-      subtitle: "Tutti i tuoi titoli per bus, metro e treni in una sola schermata.",
-      activePasses: "Biglietti Attivi",
-      buyNew: "Acquista Nuovo Biglietto",
-      validUntil: "Valido fino a",
-      scanNFC: "Simula Convalida NFC",
-      qrTitle: "Codice QR per Controllo",
-      nfcSuccess: "Biglietto Convalidato con Successo! (Bip OK)",
-      emptyWallet: "Nessun biglietto attivo. Acquista un titolo per viaggiare senza pensieri!"
-    },
-    taxi: {
-      title: "Hub Taxi & Mobilità Condivisa",
-      subtitle: "Chiama un taxi o sblocca un mezzo elettrico in 1 clic.",
-      estimatedFare: "Stima Corsa",
-      eta: "Tempo Arrivo",
-      bookNow: "Prenota Subito",
-      confirmBooking: "Taxi in arrivo! Autista a 3 minuti da te.",
-      driversNearby: "Autisti disponibili nei paraggi"
-    },
-    disruptions: {
-      title: "Avvisi e Segnalazioni Community",
-      subtitle: "Aggiornamenti in tempo reale dai passeggeri e dalle aziende.",
-      reportBtn: "Invia Segnalazione",
-      alertType: "Tipo di problema",
-      submit: "Pubblica Avviso"
-    },
-    eco: {
-      title: "Pannello Impatto Ecologico",
-      totalSaved: "CO2 Risparmiata Totale",
-      treesEquivalent: "Alberi Equivalenti",
-      rank: "Livello Viaggiatore Verde"
-    }
+    tagline: 'Bus, metro, tram, treni e taxi di ogni città in un\'unica app',
+    common: { min: 'min', loading: 'Caricamento…', retry: 'Riprova', close: 'Chiudi', live: 'Tempo reale', scheduled: 'Orario programmato', onTime: 'In orario', delay: '+{n} min', early: '{n} min in anticipo', cancelled: 'Soppresso', track: 'Bin. {n}', now: 'ora', open: 'Apri', call: 'Chiama', change: 'Cambia' },
+    modes: { bus: 'Bus', tram: 'Tram', metro: 'Metro', train: 'Treno', ferry: 'Traghetto', walk: 'A piedi', bike: 'Bici', car: 'Auto', plane: 'Aereo' },
+    tabs: { planner: 'Percorso', departures: 'Partenze', map: 'Mappa', tickets: 'Biglietti', taxi: 'Taxi' },
+    city: { button: 'Città', title: 'Scegli la città', subtitle: 'OmniTransit funziona in ogni città coperta dagli orari ufficiali aperti: cerca la tua.', search: 'Cerca una città…', featured: 'Città in evidenza', useLocation: 'Usa la mia posizione', localBusMissing: '{operator}: i bus urbani non pubblicano ancora orari aperti. Qui vedi treni e linee extraurbane; per i bus urbani usa l\'app ufficiale (scheda Biglietti).' },
+    planner: { from: 'Partenza', to: 'Destinazione', placeholder: 'Indirizzo, fermata o luogo', swap: 'Inverti', myLocation: 'La mia posizione', search: 'Cerca percorsi', departAt: 'Parti', arriveBy: 'Arriva entro', now: 'Adesso', wheelchair: 'Accessibile in carrozzina', sortFastest: 'Più veloce', sortTransfers: 'Meno cambi', sortWalking: 'Meno a piedi', results: '{n} soluzioni', noResults: 'Nessuna soluzione trovata. Prova un altro orario o un luogo vicino a una fermata.', direct: 'Diretto', oneTransfer: '1 cambio', transfers: '{n} cambi', walk: '{n} min a piedi', showMap: 'Mostra sulla mappa', stops: '{n} fermate', toward: 'direzione {x}', walkTo: 'Cammina fino a {x}', getOff: 'Scendi a {x}', home: 'Casa', work: 'Lavoro', setHome: 'Imposta come Casa', setWork: 'Imposta come Lavoro', favorites: 'Preferiti', recents: 'Recenti', save: 'Salva nei preferiti', remove: 'Rimuovi dai preferiti', favLimit: 'Versione gratuita: massimo {n} preferiti. Passa a Pro, oppure guarda un video per averli illimitati per 24 ore.', watchVideo: 'Guarda un video', enterBoth: 'Inserisci partenza e destinazione', earlier: 'Prima', later: 'Più tardi', details: 'Dettagli', hide: 'Nascondi', operatorSite: 'Sito operatore', inMinutes: 'tra {n} min' },
+    departures: { title: 'Partenze in tempo reale', nearMe: 'Vicino a me', center: 'Centro città', searchStop: 'Cerca una fermata…', autoRefresh: 'Aggiornamento automatico ogni 30 secondi', none: 'Nessuna partenza nei prossimi minuti in questa zona.', all: 'Tutti', updated: 'Aggiornato alle {t}', inMin: '{n} min', nearbyArea: 'Fermate entro {m} m da: {x}', stop: 'Fermata: {x}' },
+    map: { zoomIn: 'Avvicina la mappa per vedere le fermate', nextDepartures: 'Prossime partenze', allDepartures: 'Tutte le partenze', locate: 'La mia posizione', route: 'Percorso selezionato', clearRoute: 'Togli percorso' },
+    tickets: { title: 'Biglietti', subtitle: 'OmniTransit non vende biglietti: ti porta ai canali ufficiali, così il biglietto è sempre valido.', official: 'Canali ufficiali verificati', detected: 'Operatori attivi nella zona', detectedHint: 'Rilevati dagli orari ufficiali vicino a {city}', noCurated: 'Per questa città non abbiamo ancora canali verificati: usa gli operatori rilevati qui sotto.', fares: 'Tariffe', notes: { busUrban: 'Bus urbani ed extraurbani', ticketApp: 'App per biglietti e abbonamenti', trains: 'Treni', metroBusTram: 'Metro, bus e tram', officialApp: 'App ufficiale dei trasporti', contactless: 'Paga con carta contactless', icCard: 'Carta IC ricaricabile' } },
+    taxi: { title: 'Taxi', subtitle: 'Contatti verificati dei servizi taxi della città.', none: 'Per questa città non abbiamo ancora contatti taxi verificati.', disclaimer: 'Prezzi, tempi d\'attesa e disponibilità sono decisi dal servizio scelto.', notes: { taxiDay: 'Servizio diurno 5:00–1:00', taxiNight: 'Servizio notturno 1:00–5:00', licensedOnly: 'Usa solo taxi e minicab con licenza', taxiApp: 'App taxi più diffusa in Giappone', cityTaxiNumber: 'Numero unico del Comune' } },
+    pro: { title: 'OmniTransit Pro', subtitle: 'Acquisto unico, nessun abbonamento', noAds: 'Nessuna pubblicità', unlimitedFav: 'Preferiti illimitati', support: 'Sostieni lo sviluppo di un\'app indipendente', buy: 'Acquista a {price}', restore: 'Ripristina acquisti', owned: 'Pro attivo — grazie!', restored: 'Acquisto ripristinato', notFound: 'Nessun acquisto trovato', error: 'Acquisto non riuscito. Riprova.', webOnly: 'Disponibile nell\'app per iPhone e Android.', removeAds: 'Rimuovi pubblicità' },
+    footer: { data: 'Orari dai feed GTFS ufficiali degli operatori, calcolati con MOTIS.', sources: 'Fonti dei dati', disclaimer: 'In caso di scioperi o deviazioni verifica sempre sui canali ufficiali.', privacy: 'Privacy' },
+    errors: { network: 'Impossibile caricare i dati. Controlla la connessione e riprova.', location: 'Posizione non disponibile. Consenti l\'accesso alla posizione nelle impostazioni.' }
   },
+
   en: {
-    appName: "OmniTransit",
-    tagline: "Global Transit in One Unified Super App",
-    subtagline: "Buses, Subways, Trains, Trams & Taxis across all countries.",
-    searchPlaceholderOrigin: "From where? (e.g. Central Station, Eiffel Tower...)",
-    searchPlaceholderDest: "Where to? (e.g. Airport, Downtown, Gare de Lyon...)",
-    swapLocations: "Swap origin and destination",
-    findRoutes: "Search Routes",
-    tabs: {
-      planner: "Trip Planner",
-      radar: "Live Map & Radar",
-      board: "Departures Board",
-      wallet: "Tickets & Wallet",
-      taxi: "Taxi & Rides",
-      disruptions: "Alerts & Live Feed",
-      eco: "Eco Impact"
-    },
-    filters: {
-      fastest: "Fastest",
-      cheapest: "Cheapest",
-      eco: "Eco Green",
-      rainSafe: "Rain-Safe",
-      accessible: "100% Accessible"
-    },
-    modes: {
-      bus: "City Bus",
-      metro: "Subway / Metro",
-      train: "Regional / High-Speed Train",
-      tram: "Tramway",
-      taxi: "Taxi & Rideshare",
-      scooter: "E-Scooter / Bike",
-      ferry: "Ferry"
-    },
-    citySelector: {
-      title: "Select Country & City",
-      searchCity: "Search city or country...",
-      current: "Active City",
-      operators: "Integrated Transit Operators"
-    },
-    routes: {
-      resultsFound: "multimodal itineraries found",
-      duration: "duration",
-      transfers: "transfers",
-      leavesIn: "Leaves in",
-      onTime: "On time",
-      delayed: "delayed",
-      crowding: "Crowding",
-      crowdLow: "Low",
-      crowdMed: "Moderate",
-      crowdHigh: "Crowded",
-      co2Saved: "CO2 saved",
-      buyTicketBtn: "Buy Ticket",
-      stepByStep: "Step-by-step guidance"
-    },
-    wallet: {
-      title: "Unified Mobility Ticket Wallet",
-      subtitle: "All your transit passes and tickets across all operators in one place.",
-      activePasses: "Active Tickets",
-      buyNew: "Purchase New Ticket",
-      validUntil: "Valid until",
-      scanNFC: "Simulate NFC Tap",
-      qrTitle: "QR Inspection Code",
-      nfcSuccess: "Ticket Successfully Validated! (Bip OK)",
-      emptyWallet: "No active tickets. Buy a transit pass to travel seamlessly!"
-    },
-    taxi: {
-      title: "Taxi & Micro-Mobility Aggregator",
-      subtitle: "Call a cab or unlock an e-scooter with a single tap.",
-      estimatedFare: "Estimated Fare",
-      eta: "Arrival Time",
-      bookNow: "Book Cab Now",
-      confirmBooking: "Taxi dispatched! Driver arriving in 3 minutes.",
-      driversNearby: "Cabs available nearby"
-    },
-    disruptions: {
-      title: "Community & Service Alerts",
-      subtitle: "Real-time delay notifications from official operators and crowd sources.",
-      reportBtn: "Report Issue",
-      alertType: "Issue Category",
-      submit: "Post Report"
-    },
-    eco: {
-      title: "Ecological Impact Dashboard",
-      totalSaved: "Total CO2 Saved",
-      treesEquivalent: "Trees Equivalent Saved",
-      rank: "Green Traveler Tier"
-    }
+    tagline: 'Buses, metro, trams, trains and taxis of every city in one app',
+    common: { min: 'min', loading: 'Loading…', retry: 'Retry', close: 'Close', live: 'Real time', scheduled: 'Scheduled', onTime: 'On time', delay: '+{n} min', early: '{n} min early', cancelled: 'Cancelled', track: 'Plat. {n}', now: 'now', open: 'Open', call: 'Call', change: 'Change' },
+    modes: { bus: 'Bus', tram: 'Tram', metro: 'Metro', train: 'Train', ferry: 'Ferry', walk: 'Walk', bike: 'Bike', car: 'Car', plane: 'Plane' },
+    tabs: { planner: 'Route', departures: 'Departures', map: 'Map', tickets: 'Tickets', taxi: 'Taxi' },
+    city: { button: 'City', title: 'Choose your city', subtitle: 'OmniTransit works in every city covered by open official timetables: search for yours.', search: 'Search a city…', featured: 'Featured cities', useLocation: 'Use my location', localBusMissing: '{operator}: city buses do not publish open timetables yet. You see trains and regional lines here; for city buses use the official app (Tickets tab).' },
+    planner: { from: 'From', to: 'To', placeholder: 'Address, stop or place', swap: 'Swap', myLocation: 'My location', search: 'Find routes', departAt: 'Leave', arriveBy: 'Arrive by', now: 'Now', wheelchair: 'Wheelchair accessible', sortFastest: 'Fastest', sortTransfers: 'Fewest changes', sortWalking: 'Least walking', results: '{n} options', noResults: 'No route found. Try another time or a place closer to a stop.', direct: 'Direct', oneTransfer: '1 change', transfers: '{n} changes', walk: '{n} min walk', showMap: 'Show on map', stops: '{n} stops', toward: 'towards {x}', walkTo: 'Walk to {x}', getOff: 'Get off at {x}', home: 'Home', work: 'Work', setHome: 'Set as Home', setWork: 'Set as Work', favorites: 'Favourites', recents: 'Recent', save: 'Save to favourites', remove: 'Remove from favourites', favLimit: 'Free version: up to {n} favourites. Go Pro, or watch a video for unlimited favourites for 24 hours.', watchVideo: 'Watch a video', enterBoth: 'Enter origin and destination', earlier: 'Earlier', later: 'Later', details: 'Details', hide: 'Hide', operatorSite: 'Operator website', inMinutes: 'in {n} min' },
+    departures: { title: 'Live departures', nearMe: 'Near me', center: 'City centre', searchStop: 'Search a stop…', autoRefresh: 'Refreshes automatically every 30 seconds', none: 'No departures in the next minutes in this area.', all: 'All', updated: 'Updated at {t}', inMin: '{n} min', nearbyArea: 'Stops within {m} m of: {x}', stop: 'Stop: {x}' },
+    map: { zoomIn: 'Zoom in to see stops', nextDepartures: 'Next departures', allDepartures: 'All departures', locate: 'My location', route: 'Selected route', clearRoute: 'Clear route' },
+    tickets: { title: 'Tickets', subtitle: 'OmniTransit does not sell tickets: it takes you to the official channels, so your ticket is always valid.', official: 'Verified official channels', detected: 'Operators in the area', detectedHint: 'Detected from official timetables near {city}', noCurated: 'We have no verified channels for this city yet: use the operators detected below.', fares: 'Fares', notes: { busUrban: 'City and regional buses', ticketApp: 'Tickets and passes app', trains: 'Trains', metroBusTram: 'Metro, bus and tram', officialApp: 'Official transport app', contactless: 'Pay with a contactless card', icCard: 'Rechargeable IC card' } },
+    taxi: { title: 'Taxi', subtitle: 'Verified contacts of the city\'s taxi services.', none: 'We have no verified taxi contacts for this city yet.', disclaimer: 'Prices, waiting times and availability are set by the chosen service.', notes: { taxiDay: 'Day service 5:00–1:00', taxiNight: 'Night service 1:00–5:00', licensedOnly: 'Only use licensed taxis and minicabs', taxiApp: 'Most used taxi app in Japan', cityTaxiNumber: 'City council single number' } },
+    pro: { title: 'OmniTransit Pro', subtitle: 'One-time purchase, no subscription', noAds: 'No ads', unlimitedFav: 'Unlimited favourites', support: 'Support an independent app', buy: 'Buy for {price}', restore: 'Restore purchases', owned: 'Pro active — thank you!', restored: 'Purchase restored', notFound: 'No purchase found', error: 'Purchase failed. Please try again.', webOnly: 'Available in the iPhone and Android app.', removeAds: 'Remove ads' },
+    footer: { data: 'Timetables from operators\' official GTFS feeds, computed with MOTIS.', sources: 'Data sources', disclaimer: 'During strikes or diversions always check the official channels.', privacy: 'Privacy' },
+    errors: { network: 'Could not load data. Check your connection and try again.', location: 'Location unavailable. Allow location access in Settings.' }
   },
+
   fr: {
-    appName: "OmniTransit",
-    tagline: "Tous les transports mondiaux dans une seule application",
-    subtagline: "Bus, Métro, Trains, Tramways et Taxis de tous pays et villes.",
-    searchPlaceholderOrigin: "D'où partez-vous ? (ex. Gare de Lyon, Place Cavalli...)",
-    searchPlaceholderDest: "Où allez-vous ? (ex. Aéroport, Tour Eiffel...)",
-    swapLocations: "Inverser départ et arrivée",
-    findRoutes: "Rechercher un itinéraire",
-    tabs: {
-      planner: "Planificateur",
-      radar: "Carte & Radar Live",
-      board: "Horaires en direct",
-      wallet: "Titres & Portefeuille",
-      taxi: "Hub Taxis & VTC",
-      disruptions: "Alertes Info Trafic",
-      eco: "Impact Éco"
-    },
-    filters: {
-      fastest: "Plus Rapide",
-      cheapest: "Plus Économique",
-      eco: "Éco Écolo",
-      rainSafe: "Abrité Pluie",
-      accessible: "100% Accessible"
-    },
-    modes: {
-      bus: "Bus Urbain",
-      metro: "Métro",
-      train: "Train Régional / TGV",
-      tram: "Tramway",
-      taxi: "Taxi & VTC",
-      scooter: "Trottinette / Vélo",
-      ferry: "Ferry"
-    },
-    citySelector: {
-      title: "Choisir le Pays et la Ville",
-      searchCity: "Rechercher une ville...",
-      current: "Ville Active",
-      operators: "Réseaux Intégrés"
-    },
-    routes: {
-      resultsFound: "itinéraires trouvés",
-      duration: "durée",
-      transfers: "correspondances",
-      leavesIn: "Départ dans",
-      onTime: "À l'heure",
-      delayed: "retard",
-      crowding: "Affluence",
-      crowdLow: "Faible",
-      crowdMed: "Moyenne",
-      crowdHigh: "Forte",
-      co2Saved: "CO2 économisé",
-      buyTicketBtn: "Acheter Billet",
-      stepByStep: "Détails de l'itinéraire"
-    },
-    wallet: {
-      title: "Portefeuille Unique de Titres de Transport",
-      subtitle: "Vos pass bus, métro et train réunis dans une seule interface.",
-      activePasses: "Titres Actifs",
-      buyNew: "Acheter un Titre",
-      validUntil: "Valable jusqu'à",
-      scanNFC: "Simuler Validation NFC",
-      qrTitle: "Code QR de Contrôle",
-      nfcSuccess: "Titre Validé avec Succès ! (Bip OK)",
-      emptyWallet: "Aucun titre actif."
-    },
-    taxi: {
-      title: "Hub Taxis & Mobilité Partagée",
-      subtitle: "Réservez un taxi G7/YellowCab ou un scooter en 1 clic.",
-      estimatedFare: "Tarif Estimé",
-      eta: "Temps d'arrivée",
-      bookNow: "Commander Taxi",
-      confirmBooking: "Taxi en route ! Arrivée dans 3 min.",
-      driversNearby: "Taxis disponibles"
-    },
-    disruptions: {
-      title: "Alertes Trafic et Signalements",
-      subtitle: "Mises à jour en direct des voyageurs et des compagnies.",
-      reportBtn: "Signaler Perturbation",
-      alertType: "Type d'incident",
-      submit: "Envoyer Alerte"
-    },
-    eco: {
-      title: "Bilan Impact Écologique",
-      totalSaved: "CO2 Économisé",
-      treesEquivalent: "Équivalent Arbres",
-      rank: "Statut Éco-Voyageur"
-    }
+    tagline: 'Bus, métro, tram, trains et taxis de chaque ville dans une seule app',
+    common: { min: 'min', loading: 'Chargement…', retry: 'Réessayer', close: 'Fermer', live: 'Temps réel', scheduled: 'Horaire prévu', onTime: 'À l\'heure', delay: '+{n} min', early: '{n} min d\'avance', cancelled: 'Supprimé', track: 'Voie {n}', now: 'maintenant', open: 'Ouvrir', call: 'Appeler', change: 'Changer' },
+    modes: { bus: 'Bus', tram: 'Tram', metro: 'Métro', train: 'Train', ferry: 'Ferry', walk: 'À pied', bike: 'Vélo', car: 'Voiture', plane: 'Avion' },
+    tabs: { planner: 'Itinéraire', departures: 'Départs', map: 'Carte', tickets: 'Billets', taxi: 'Taxi' },
+    city: { button: 'Ville', title: 'Choisissez la ville', subtitle: 'OmniTransit fonctionne dans toutes les villes couvertes par des horaires officiels ouverts : cherchez la vôtre.', search: 'Rechercher une ville…', featured: 'Villes à la une', useLocation: 'Utiliser ma position', localBusMissing: '{operator} : les bus urbains ne publient pas encore d\'horaires ouverts. Vous voyez ici les trains et les lignes interurbaines ; pour les bus urbains, utilisez l\'app officielle (onglet Billets).' },
+    planner: { from: 'Départ', to: 'Arrivée', placeholder: 'Adresse, arrêt ou lieu', swap: 'Inverser', myLocation: 'Ma position', search: 'Rechercher', departAt: 'Partir', arriveBy: 'Arriver avant', now: 'Maintenant', wheelchair: 'Accessible en fauteuil', sortFastest: 'Le plus rapide', sortTransfers: 'Moins de correspondances', sortWalking: 'Moins de marche', results: '{n} trajets', noResults: 'Aucun trajet trouvé. Essayez un autre horaire ou un lieu plus proche d\'un arrêt.', direct: 'Direct', oneTransfer: '1 correspondance', transfers: '{n} correspondances', walk: '{n} min à pied', showMap: 'Voir sur la carte', stops: '{n} arrêts', toward: 'direction {x}', walkTo: 'Marchez jusqu\'à {x}', getOff: 'Descendez à {x}', home: 'Domicile', work: 'Travail', setHome: 'Définir comme Domicile', setWork: 'Définir comme Travail', favorites: 'Favoris', recents: 'Récents', save: 'Ajouter aux favoris', remove: 'Retirer des favoris', favLimit: 'Version gratuite : {n} favoris maximum. Passez à Pro, ou regardez une vidéo pour des favoris illimités pendant 24 heures.', watchVideo: 'Regarder une vidéo', enterBoth: 'Saisissez le départ et l\'arrivée', earlier: 'Plus tôt', later: 'Plus tard', details: 'Détails', hide: 'Masquer', operatorSite: 'Site de l\'opérateur', inMinutes: 'dans {n} min' },
+    departures: { title: 'Départs en temps réel', nearMe: 'Autour de moi', center: 'Centre-ville', searchStop: 'Rechercher un arrêt…', autoRefresh: 'Mise à jour automatique toutes les 30 secondes', none: 'Aucun départ dans les prochaines minutes dans cette zone.', all: 'Tous', updated: 'Mis à jour à {t}', inMin: '{n} min', nearbyArea: 'Arrêts à moins de {m} m de : {x}', stop: 'Arrêt : {x}' },
+    map: { zoomIn: 'Zoomez pour voir les arrêts', nextDepartures: 'Prochains départs', allDepartures: 'Tous les départs', locate: 'Ma position', route: 'Itinéraire sélectionné', clearRoute: 'Effacer l\'itinéraire' },
+    tickets: { title: 'Billets', subtitle: 'OmniTransit ne vend pas de billets : il vous dirige vers les canaux officiels, pour un billet toujours valable.', official: 'Canaux officiels vérifiés', detected: 'Opérateurs de la zone', detectedHint: 'Détectés à partir des horaires officiels près de {city}', noCurated: 'Pas encore de canaux vérifiés pour cette ville : utilisez les opérateurs détectés ci-dessous.', fares: 'Tarifs', notes: { busUrban: 'Bus urbains et interurbains', ticketApp: 'App billets et abonnements', trains: 'Trains', metroBusTram: 'Métro, bus et tram', officialApp: 'App officielle des transports', contactless: 'Payez avec une carte sans contact', icCard: 'Carte IC rechargeable' } },
+    taxi: { title: 'Taxi', subtitle: 'Contacts vérifiés des services de taxi de la ville.', none: 'Pas encore de contacts taxi vérifiés pour cette ville.', disclaimer: 'Les prix, délais et disponibilités dépendent du service choisi.', notes: { taxiDay: 'Service de jour 5h–1h', taxiNight: 'Service de nuit 1h–5h', licensedOnly: 'Utilisez uniquement des taxis et minicabs agréés', taxiApp: 'App de taxi la plus utilisée au Japon', cityTaxiNumber: 'Numéro unique de la ville' } },
+    pro: { title: 'OmniTransit Pro', subtitle: 'Achat unique, sans abonnement', noAds: 'Aucune publicité', unlimitedFav: 'Favoris illimités', support: 'Soutenez une app indépendante', buy: 'Acheter pour {price}', restore: 'Restaurer les achats', owned: 'Pro actif — merci !', restored: 'Achat restauré', notFound: 'Aucun achat trouvé', error: 'Échec de l\'achat. Réessayez.', webOnly: 'Disponible dans l\'app iPhone et Android.', removeAds: 'Supprimer les pubs' },
+    footer: { data: 'Horaires issus des flux GTFS officiels des opérateurs, calculés avec MOTIS.', sources: 'Sources des données', disclaimer: 'En cas de grève ou de déviation, vérifiez toujours les canaux officiels.', privacy: 'Confidentialité' },
+    errors: { network: 'Impossible de charger les données. Vérifiez votre connexion et réessayez.', location: 'Position indisponible. Autorisez l\'accès à la position dans les Réglages.' }
   },
+
   es: {
-    appName: "OmniTransit",
-    tagline: "Todo el Transporte Global en Una Sola App",
-    subtagline: "Autobuses, Metro, Trenes, Tranvías y Taxis de todos los países.",
-    searchPlaceholderOrigin: "¿Desde dónde sales? (ej. Estación Central, Plaza...)",
-    searchPlaceholderDest: "¿A dónde vas? (ej. Aeropuerto, Centro...)",
-    swapLocations: "Invertir origen y destino",
-    findRoutes: "Buscar Rutas",
-    tabs: {
-      planner: "Planificador",
-      radar: "Mapa & Radar Live",
-      board: "Tablero de Salidas",
-      wallet: "Billetes & Wallet",
-      taxi: "Hub Taxi & VTC",
-      disruptions: "Alertas Comunidad",
-      eco: "Impacto Éco"
-    },
-    filters: {
-      fastest: "Más Rápido",
-      cheapest: "Más Económico",
-      eco: "Eco Verde",
-      rainSafe: "Protegido Lluvia",
-      accessible: "100% Accesible"
-    },
-    modes: {
-      bus: "Autobús Urbano",
-      metro: "Metro",
-      train: "Tren Regional / AVE",
-      tram: "Tranvía",
-      taxi: "Taxi & VTC",
-      scooter: "Patinete / Bici",
-      ferry: "Ferry"
-    },
-    citySelector: {
-      title: "Seleccionar País y Ciudad",
-      searchCity: "Buscar ciudad o país...",
-      current: "Ciudad Activa",
-      operators: "Operadores Integrados"
-    },
-    routes: {
-      resultsFound: "rutas encontradas",
-      duration: "duración",
-      transfers: "transbordos",
-      leavesIn: "Sale en",
-      onTime: "En hora",
-      delayed: "con retraso",
-      crowding: "Ocupación",
-      crowdLow: "Baja",
-      crowdMed: "Media",
-      crowdHigh: "Alta",
-      co2Saved: "CO2 ahorrado",
-      buyTicketBtn: "Comprar Billete",
-      stepByStep: "Paso a paso"
-    },
-    wallet: {
-      title: "Wallet Unificado de Billetes",
-      subtitle: "Todos tus pases de autobús, metro y tren en una sola pantalla.",
-      activePasses: "Billetes Activos",
-      buyNew: "Comprar Nuevo Billete",
-      validUntil: "Válido hasta",
-      scanNFC: "Simular Validación NFC",
-      qrTitle: "Código QR de Inspección",
-      nfcSuccess: "¡Billete Validado con Éxito!",
-      emptyWallet: "Sin billetes activos."
-    },
-    taxi: {
-      title: "Hub de Taxi y Movilidad",
-      subtitle: "Solicita un taxi o desbloquea un patinete en 1 clic.",
-      estimatedFare: "Tarifa Estimada",
-      eta: "Tiempo de llegada",
-      bookNow: "Pedir Taxi",
-      confirmBooking: "¡Taxi enviado! Llega en 3 minutos.",
-      driversNearby: "Taxis cercanos"
-    },
-    disruptions: {
-      title: "Alertas de Servicio y Comunidad",
-      subtitle: "Información de retrasos e incidencias en tiempo real.",
-      reportBtn: "Notificar Incidencia",
-      alertType: "Tipo de problema",
-      submit: "Publicar"
-    },
-    eco: {
-      title: "Panel de Impacto Ecológico",
-      totalSaved: "CO2 Ahorrado",
-      treesEquivalent: "Árboles Salvados",
-      rank: "Nivel Viajero Verde"
-    }
+    tagline: 'Autobuses, metro, tranvías, trenes y taxis de cada ciudad en una sola app',
+    common: { min: 'min', loading: 'Cargando…', retry: 'Reintentar', close: 'Cerrar', live: 'Tiempo real', scheduled: 'Horario previsto', onTime: 'Puntual', delay: '+{n} min', early: '{n} min antes', cancelled: 'Cancelado', track: 'Vía {n}', now: 'ahora', open: 'Abrir', call: 'Llamar', change: 'Cambiar' },
+    modes: { bus: 'Autobús', tram: 'Tranvía', metro: 'Metro', train: 'Tren', ferry: 'Ferry', walk: 'A pie', bike: 'Bici', car: 'Coche', plane: 'Avión' },
+    tabs: { planner: 'Ruta', departures: 'Salidas', map: 'Mapa', tickets: 'Billetes', taxi: 'Taxi' },
+    city: { button: 'Ciudad', title: 'Elige la ciudad', subtitle: 'OmniTransit funciona en todas las ciudades con horarios oficiales abiertos: busca la tuya.', search: 'Buscar una ciudad…', featured: 'Ciudades destacadas', useLocation: 'Usar mi ubicación', localBusMissing: '{operator}: los autobuses urbanos aún no publican horarios abiertos. Aquí ves trenes y líneas interurbanas; para los autobuses urbanos usa la app oficial (pestaña Billetes).' },
+    planner: { from: 'Origen', to: 'Destino', placeholder: 'Dirección, parada o lugar', swap: 'Invertir', myLocation: 'Mi ubicación', search: 'Buscar rutas', departAt: 'Salir', arriveBy: 'Llegar antes de', now: 'Ahora', wheelchair: 'Accesible en silla de ruedas', sortFastest: 'Más rápida', sortTransfers: 'Menos transbordos', sortWalking: 'Menos a pie', results: '{n} opciones', noResults: 'No se encontró ninguna ruta. Prueba otra hora o un lugar más cerca de una parada.', direct: 'Directo', oneTransfer: '1 transbordo', transfers: '{n} transbordos', walk: '{n} min a pie', showMap: 'Ver en el mapa', stops: '{n} paradas', toward: 'dirección {x}', walkTo: 'Camina hasta {x}', getOff: 'Bájate en {x}', home: 'Casa', work: 'Trabajo', setHome: 'Fijar como Casa', setWork: 'Fijar como Trabajo', favorites: 'Favoritos', recents: 'Recientes', save: 'Guardar en favoritos', remove: 'Quitar de favoritos', favLimit: 'Versión gratuita: máximo {n} favoritos. Pásate a Pro o mira un vídeo para tenerlos ilimitados durante 24 horas.', watchVideo: 'Ver un vídeo', enterBoth: 'Introduce origen y destino', earlier: 'Antes', later: 'Más tarde', details: 'Detalles', hide: 'Ocultar', operatorSite: 'Web del operador', inMinutes: 'en {n} min' },
+    departures: { title: 'Salidas en tiempo real', nearMe: 'Cerca de mí', center: 'Centro', searchStop: 'Buscar una parada…', autoRefresh: 'Actualización automática cada 30 segundos', none: 'No hay salidas en los próximos minutos en esta zona.', all: 'Todos', updated: 'Actualizado a las {t}', inMin: '{n} min', nearbyArea: 'Paradas a menos de {m} m de: {x}', stop: 'Parada: {x}' },
+    map: { zoomIn: 'Acerca el mapa para ver las paradas', nextDepartures: 'Próximas salidas', allDepartures: 'Todas las salidas', locate: 'Mi ubicación', route: 'Ruta seleccionada', clearRoute: 'Quitar ruta' },
+    tickets: { title: 'Billetes', subtitle: 'OmniTransit no vende billetes: te lleva a los canales oficiales para que tu billete sea siempre válido.', official: 'Canales oficiales verificados', detected: 'Operadores de la zona', detectedHint: 'Detectados en los horarios oficiales cerca de {city}', noCurated: 'Aún no tenemos canales verificados para esta ciudad: usa los operadores detectados abajo.', fares: 'Tarifas', notes: { busUrban: 'Autobuses urbanos e interurbanos', ticketApp: 'App de billetes y abonos', trains: 'Trenes', metroBusTram: 'Metro, autobús y tranvía', officialApp: 'App oficial de transporte', contactless: 'Paga con tarjeta sin contacto', icCard: 'Tarjeta IC recargable' } },
+    taxi: { title: 'Taxi', subtitle: 'Contactos verificados de los servicios de taxi de la ciudad.', none: 'Aún no tenemos contactos de taxi verificados para esta ciudad.', disclaimer: 'Precios, esperas y disponibilidad dependen del servicio elegido.', notes: { taxiDay: 'Servicio diurno 5:00–1:00', taxiNight: 'Servicio nocturno 1:00–5:00', licensedOnly: 'Usa solo taxis y minicabs con licencia', taxiApp: 'La app de taxi más usada en Japón', cityTaxiNumber: 'Número único del Ayuntamiento' } },
+    pro: { title: 'OmniTransit Pro', subtitle: 'Pago único, sin suscripción', noAds: 'Sin anuncios', unlimitedFav: 'Favoritos ilimitados', support: 'Apoya una app independiente', buy: 'Comprar por {price}', restore: 'Restaurar compras', owned: 'Pro activo — ¡gracias!', restored: 'Compra restaurada', notFound: 'No se encontró ninguna compra', error: 'La compra ha fallado. Inténtalo de nuevo.', webOnly: 'Disponible en la app para iPhone y Android.', removeAds: 'Quitar anuncios' },
+    footer: { data: 'Horarios de los feeds GTFS oficiales de los operadores, calculados con MOTIS.', sources: 'Fuentes de datos', disclaimer: 'En caso de huelgas o desvíos consulta siempre los canales oficiales.', privacy: 'Privacidad' },
+    errors: { network: 'No se pudieron cargar los datos. Comprueba la conexión e inténtalo de nuevo.', location: 'Ubicación no disponible. Permite el acceso a la ubicación en Ajustes.' }
   },
+
   de: {
-    appName: "OmniTransit",
-    tagline: "Alle weltweiten Verkehrsmittel in einer App",
-    subtagline: "Busse, U-Bahnen, Züge, Straßenbahnen und Taxis aller Länder.",
-    searchPlaceholderOrigin: "Startort eingeben (z.B. Hauptbahnhof...)",
-    searchPlaceholderDest: "Zielort eingeben (z.B. Flughafen, Stadtzentrum...)",
-    swapLocations: "Start und Ziel tauschen",
-    findRoutes: "Routen Suchen",
-    tabs: {
-      planner: "Reiseplaner",
-      radar: "Live-Karte & Radar",
-      board: "Abfahrtstafel",
-      wallet: "Tickets & Wallet",
-      taxi: "Taxi & Rides",
-      disruptions: "Meldungen & Feed",
-      eco: "Öko Impact"
-    },
-    filters: {
-      fastest: "Schnellste",
-      cheapest: "Günstigste",
-      eco: "Öko Grün",
-      rainSafe: "Wettersicher",
-      accessible: "100% Barrierefrei"
-    },
-    modes: {
-      bus: "Stadtbus",
-      metro: "U-Bahn / S-Bahn",
-      train: "Regional- / ICE-Zug",
-      tram: "Straßenbahn",
-      taxi: "Taxi & Rideshare",
-      scooter: "E-Scooter / Fahrrad",
-      ferry: "Fähre"
-    },
-    citySelector: {
-      title: "Land und Stadt Auswählen",
-      searchCity: "Stadt oder Land suchen...",
-      current: "Aktive Stadt",
-      operators: "Integrierte Betreiber"
-    },
-    routes: {
-      resultsFound: "Verbindungen gefunden",
-      duration: "Dauer",
-      transfers: "Umstiege",
-      leavesIn: "Abfahrt in",
-      onTime: "Pünktlich",
-      delayed: "verspätet",
-      crowding: "Auslastung",
-      crowdLow: "Gering",
-      crowdMed: "Mittel",
-      crowdHigh: "Hoch",
-      co2Saved: "CO2 gespart",
-      buyTicketBtn: "Ticket Kaufen",
-      stepByStep: "Schritt-für-Schritt"
-    },
-    wallet: {
-      title: "Vereinheitlichtes Ticket-Wallet",
-      subtitle: "Alle Fahrkarten für Bus, Bahn und Metro an einem Ort.",
-      activePasses: "Aktive Tickets",
-      buyNew: "Neues Ticket Kaufen",
-      validUntil: "Gültig bis",
-      scanNFC: "NFC-Entwertung simulieren",
-      qrTitle: "QR-Kontrollcode",
-      nfcSuccess: "Ticket Erfolgreich Entwertet!",
-      emptyWallet: "Keine aktiven Tickets."
-    },
-    taxi: {
-      title: "Taxi & Mikromobilität Hub",
-      subtitle: "Taxi rufen oder E-Scooter freischalten mit 1 Klick.",
-      estimatedFare: "Geschätzter Fahrpreis",
-      eta: "Ankunftszeit",
-      bookNow: "Taxi Buchen",
-      confirmBooking: "Taxi unterwegs! Ankunft in 3 Minuten.",
-      driversNearby: "Taxis in der Nähe"
-    },
-    disruptions: {
-      title: "Störungsmeldungen & Community",
-      subtitle: "Echtzeit-Updates zu Verspätungen und Ausfällen.",
-      reportBtn: "Störung Melden",
-      alertType: "Problemkategorie",
-      submit: "Absenden"
-    },
-    eco: {
-      title: "Ökologische Auswertung",
-      totalSaved: "Gespartes CO2",
-      treesEquivalent: "Äquivalente Bäume",
-      rank: "Grüner Reisestatus"
-    }
+    tagline: 'Busse, U-Bahn, Straßenbahn, Züge und Taxis jeder Stadt in einer App',
+    common: { min: 'Min.', loading: 'Wird geladen…', retry: 'Erneut versuchen', close: 'Schließen', live: 'Echtzeit', scheduled: 'Fahrplan', onTime: 'Pünktlich', delay: '+{n} Min.', early: '{n} Min. früher', cancelled: 'Fällt aus', track: 'Gl. {n}', now: 'jetzt', open: 'Öffnen', call: 'Anrufen', change: 'Ändern' },
+    modes: { bus: 'Bus', tram: 'Tram', metro: 'U-Bahn', train: 'Zug', ferry: 'Fähre', walk: 'Zu Fuß', bike: 'Fahrrad', car: 'Auto', plane: 'Flugzeug' },
+    tabs: { planner: 'Route', departures: 'Abfahrten', map: 'Karte', tickets: 'Tickets', taxi: 'Taxi' },
+    city: { button: 'Stadt', title: 'Stadt wählen', subtitle: 'OmniTransit funktioniert in jeder Stadt mit offenen offiziellen Fahrplänen: Suche deine.', search: 'Stadt suchen…', featured: 'Empfohlene Städte', useLocation: 'Meinen Standort verwenden', localBusMissing: '{operator}: Die Stadtbusse veröffentlichen noch keine offenen Fahrpläne. Hier siehst du Züge und Regionallinien; für Stadtbusse nutze die offizielle App (Reiter Tickets).' },
+    planner: { from: 'Start', to: 'Ziel', placeholder: 'Adresse, Haltestelle oder Ort', swap: 'Tauschen', myLocation: 'Mein Standort', search: 'Verbindungen suchen', departAt: 'Abfahrt', arriveBy: 'Ankunft bis', now: 'Jetzt', wheelchair: 'Rollstuhlgerecht', sortFastest: 'Schnellste', sortTransfers: 'Wenigste Umstiege', sortWalking: 'Wenig Fußweg', results: '{n} Verbindungen', noResults: 'Keine Verbindung gefunden. Versuche eine andere Zeit oder einen Ort näher an einer Haltestelle.', direct: 'Direkt', oneTransfer: '1 Umstieg', transfers: '{n} Umstiege', walk: '{n} Min. Fußweg', showMap: 'Auf der Karte zeigen', stops: '{n} Halte', toward: 'Richtung {x}', walkTo: 'Gehe zu {x}', getOff: 'Aussteigen in {x}', home: 'Zuhause', work: 'Arbeit', setHome: 'Als Zuhause festlegen', setWork: 'Als Arbeit festlegen', favorites: 'Favoriten', recents: 'Zuletzt', save: 'Zu Favoriten hinzufügen', remove: 'Aus Favoriten entfernen', favLimit: 'Gratisversion: höchstens {n} Favoriten. Hol dir Pro oder sieh ein Video für 24 Stunden unbegrenzte Favoriten.', watchVideo: 'Video ansehen', enterBoth: 'Start und Ziel eingeben', earlier: 'Früher', later: 'Später', details: 'Details', hide: 'Ausblenden', operatorSite: 'Website des Betreibers', inMinutes: 'in {n} Min.' },
+    departures: { title: 'Abfahrten in Echtzeit', nearMe: 'In meiner Nähe', center: 'Stadtzentrum', searchStop: 'Haltestelle suchen…', autoRefresh: 'Automatische Aktualisierung alle 30 Sekunden', none: 'In den nächsten Minuten keine Abfahrten in diesem Gebiet.', all: 'Alle', updated: 'Aktualisiert um {t}', inMin: '{n} Min.', nearbyArea: 'Haltestellen im Umkreis von {m} m um: {x}', stop: 'Haltestelle: {x}' },
+    map: { zoomIn: 'Hineinzoomen, um Haltestellen zu sehen', nextDepartures: 'Nächste Abfahrten', allDepartures: 'Alle Abfahrten', locate: 'Mein Standort', route: 'Gewählte Route', clearRoute: 'Route entfernen' },
+    tickets: { title: 'Tickets', subtitle: 'OmniTransit verkauft keine Tickets: Wir leiten dich zu den offiziellen Kanälen, damit dein Ticket immer gültig ist.', official: 'Geprüfte offizielle Kanäle', detected: 'Betreiber in der Umgebung', detectedHint: 'Aus offiziellen Fahrplänen nahe {city} ermittelt', noCurated: 'Für diese Stadt haben wir noch keine geprüften Kanäle: Nutze die unten gefundenen Betreiber.', fares: 'Tarife', notes: { busUrban: 'Stadt- und Regionalbusse', ticketApp: 'App für Tickets und Abos', trains: 'Züge', metroBusTram: 'U-Bahn, Bus und Tram', officialApp: 'Offizielle Verkehrs-App', contactless: 'Mit kontaktloser Karte zahlen', icCard: 'Aufladbare IC-Karte' } },
+    taxi: { title: 'Taxi', subtitle: 'Geprüfte Kontakte der Taxidienste der Stadt.', none: 'Für diese Stadt haben wir noch keine geprüften Taxikontakte.', disclaimer: 'Preise, Wartezeiten und Verfügbarkeit legt der gewählte Dienst fest.', notes: { taxiDay: 'Tagdienst 5:00–1:00', taxiNight: 'Nachtdienst 1:00–5:00', licensedOnly: 'Nur lizenzierte Taxis und Minicabs nutzen', taxiApp: 'Meistgenutzte Taxi-App in Japan', cityTaxiNumber: 'Einheitliche Nummer der Stadt' } },
+    pro: { title: 'OmniTransit Pro', subtitle: 'Einmalkauf, kein Abo', noAds: 'Keine Werbung', unlimitedFav: 'Unbegrenzte Favoriten', support: 'Unterstütze eine unabhängige App', buy: 'Für {price} kaufen', restore: 'Käufe wiederherstellen', owned: 'Pro aktiv — danke!', restored: 'Kauf wiederhergestellt', notFound: 'Kein Kauf gefunden', error: 'Kauf fehlgeschlagen. Bitte erneut versuchen.', webOnly: 'Verfügbar in der App für iPhone und Android.', removeAds: 'Werbung entfernen' },
+    footer: { data: 'Fahrpläne aus den offiziellen GTFS-Feeds der Betreiber, berechnet mit MOTIS.', sources: 'Datenquellen', disclaimer: 'Bei Streiks oder Umleitungen immer die offiziellen Kanäle prüfen.', privacy: 'Datenschutz' },
+    errors: { network: 'Daten konnten nicht geladen werden. Prüfe die Verbindung und versuche es erneut.', location: 'Standort nicht verfügbar. Erlaube den Standortzugriff in den Einstellungen.' }
   },
+
   ja: {
-    appName: "OmniTransit",
-    tagline: "世界中の交通機関を1つのアプリに統合",
-    subtagline: "各国のバス・地下鉄・電車・路面電車・タクシーをまとめ案内。",
-    searchPlaceholderOrigin: "出発地を入力 (例: ピアチェンツァ駅、パリ北駅...)",
-    searchPlaceholderDest: "目的地を入力 (例: 空港、エッフェル塔...)",
-    swapLocations: "出発地と目的地を入れ替え",
-    findRoutes: "経路を検索",
-    tabs: {
-      planner: "経路検索",
-      radar: "ライブ地図＆レーダー",
-      board: "発車時刻表",
-      wallet: "チケット＆ウォレット",
-      taxi: "タクシー＆配車",
-      disruptions: "運行情報＆投稿",
-      eco: "エコ実績"
-    },
-    filters: {
-      fastest: "最速路線",
-      cheapest: "最安料金",
-      eco: "環境優先",
-      rainSafe: "雨濡れ回避",
-      accessible: "バリアフリー"
-    },
-    modes: {
-      bus: "路線バス",
-      metro: "地下鉄",
-      train: "JR・私鉄・新幹線",
-      tram: "路面電車",
-      taxi: "タクシー・配車",
-      scooter: "電動キックボード",
-      ferry: "フェリー"
-    },
-    citySelector: {
-      title: "国と都市を選択",
-      searchCity: "都市・国名を検索...",
-      current: "選択中の都市",
-      operators: "対応事業者"
-    },
-    routes: {
-      resultsFound: "件の経路が見つかりました",
-      duration: "所要時間",
-      transfers: "乗り換え",
-      leavesIn: "出発まで",
-      onTime: "定刻",
-      delayed: "遅延",
-      crowding: "混雑度",
-      crowdLow: "空いている",
-      crowdMed: "普通",
-      crowdHigh: "混雑",
-      co2Saved: "CO2削減量",
-      buyTicketBtn: "切符を購入",
-      stepByStep: "詳細な乗り換え案内"
-    },
-    wallet: {
-      title: "統合デジタルチケットウォレット",
-      subtitle: "全事業者のバス・地下鉄・鉄道切符をまとめて管理。",
-      activePasses: "有効なチケット",
-      buyNew: "新しいチケットを購入",
-      validUntil: "有効期限",
-      scanNFC: "NFCタッチ検証を試す",
-      qrTitle: "検札用QRコード",
-      nfcSuccess: "乗車タッチが完了しました！",
-      emptyWallet: "有効なチケットはありません。"
-    },
-    taxi: {
-      title: "タクシー＆シェアモビリティ",
-      subtitle: "1タップでタクシー手配や電動モビリティを予約。",
-      estimatedFare: "概算料金",
-      eta: "到着時間",
-      bookNow: "タクシーを呼ぶ",
-      confirmBooking: "タクシーを手配しました！約3分で到着します。",
-      driversNearby: "周辺のタクシー"
-    },
-    disruptions: {
-      title: "運行情報・コミュニティ報告",
-      subtitle: "リアルタイム遅延やエレベーター点検情報。",
-      reportBtn: "情報を報告",
-      alertType: "報告カテゴリー",
-      submit: "投稿"
-    },
-    eco: {
-      title: "環境貢献度ダッシュボード",
-      totalSaved: "総CO2削減量",
-      treesEquivalent: "植林換算本数",
-      rank: "エコトラベラーランク"
-    }
+    tagline: '世界の都市のバス・地下鉄・路面電車・鉄道・タクシーをひとつのアプリで',
+    common: { min: '分', loading: '読み込み中…', retry: '再試行', close: '閉じる', live: 'リアルタイム', scheduled: '時刻表', onTime: '定刻', delay: '+{n}分', early: '{n}分早着', cancelled: '運休', track: '{n}番線', now: '今', open: '開く', call: '電話', change: '変更' },
+    modes: { bus: 'バス', tram: '路面電車', metro: '地下鉄', train: '電車', ferry: 'フェリー', walk: '徒歩', bike: '自転車', car: '車', plane: '飛行機' },
+    tabs: { planner: '経路', departures: '発車案内', map: '地図', tickets: '乗車券', taxi: 'タクシー' },
+    city: { button: '都市', title: '都市を選択', subtitle: 'OmniTransitは公式のオープンな時刻表がある都市ならどこでも使えます。都市を検索してください。', search: '都市を検索…', featured: 'おすすめの都市', useLocation: '現在地を使う', localBusMissing: '{operator}：市内バスはまだオープンな時刻表を公開していません。ここでは鉄道と郊外路線を表示します。市内バスは公式アプリ（乗車券タブ）をご利用ください。' },
+    planner: { from: '出発地', to: '目的地', placeholder: '住所・停留所・場所', swap: '入れ替え', myLocation: '現在地', search: '経路を検索', departAt: '出発', arriveBy: '到着', now: '今すぐ', wheelchair: '車いす対応', sortFastest: '早い順', sortTransfers: '乗換が少ない順', sortWalking: '徒歩が少ない順', results: '{n}件の経路', noResults: '経路が見つかりません。時刻を変えるか、停留所に近い場所をお試しください。', direct: '乗換なし', oneTransfer: '乗換1回', transfers: '乗換{n}回', walk: '徒歩{n}分', showMap: '地図で表示', stops: '{n}駅', toward: '{x}方面', walkTo: '{x}まで歩く', getOff: '{x}で降車', home: '自宅', work: '職場', setHome: '自宅に設定', setWork: '職場に設定', favorites: 'お気に入り', recents: '最近', save: 'お気に入りに追加', remove: 'お気に入りから削除', favLimit: '無料版のお気に入りは{n}件までです。Proにアップグレードするか、動画を見ると24時間無制限になります。', watchVideo: '動画を見る', enterBoth: '出発地と目的地を入力してください', earlier: '前の便', later: '後の便', details: '詳細', hide: '閉じる', operatorSite: '事業者サイト', inMinutes: 'あと{n}分' },
+    departures: { title: 'リアルタイム発車案内', nearMe: '現在地周辺', center: '市内中心部', searchStop: '停留所を検索…', autoRefresh: '30秒ごとに自動更新', none: 'このエリアでは数分以内の発車はありません。', all: 'すべて', updated: '{t} 更新', inMin: '{n}分', nearbyArea: '{x} から {m} m 以内の停留所', stop: '停留所：{x}' },
+    map: { zoomIn: '拡大すると停留所が表示されます', nextDepartures: '次の発車', allDepartures: 'すべての発車', locate: '現在地', route: '選択した経路', clearRoute: '経路を消す' },
+    tickets: { title: '乗車券', subtitle: 'OmniTransitは乗車券を販売しません。公式の販売窓口へご案内するので、乗車券は常に有効です。', official: '確認済みの公式窓口', detected: 'このエリアの事業者', detectedHint: '{city}周辺の公式時刻表から検出', noCurated: 'この都市の確認済み窓口はまだありません。下に表示された事業者をご利用ください。', fares: '運賃', notes: { busUrban: '市内・郊外バス', ticketApp: '乗車券・定期券アプリ', trains: '鉄道', metroBusTram: '地下鉄・バス・路面電車', officialApp: '公式交通アプリ', contactless: 'タッチ決済対応カードで支払い', icCard: 'チャージ式ICカード' } },
+    taxi: { title: 'タクシー', subtitle: '市内タクシーの確認済み連絡先です。', none: 'この都市の確認済みタクシー連絡先はまだありません。', disclaimer: '料金・待ち時間・空き状況は各サービスが決定します。', notes: { taxiDay: '日中 5:00〜翌1:00', taxiNight: '夜間 1:00〜5:00', licensedOnly: '認可されたタクシー・ミニキャブのみ利用してください', taxiApp: '日本で最も使われているタクシーアプリ', cityTaxiNumber: '市の共通番号' } },
+    pro: { title: 'OmniTransit Pro', subtitle: '買い切り・サブスクなし', noAds: '広告なし', unlimitedFav: 'お気に入り無制限', support: '個人開発アプリを応援', buy: '{price}で購入', restore: '購入を復元', owned: 'Pro有効 — ありがとうございます！', restored: '購入を復元しました', notFound: '購入が見つかりません', error: '購入できませんでした。もう一度お試しください。', webOnly: 'iPhone・Androidアプリで利用できます。', removeAds: '広告を消す' },
+    footer: { data: '各事業者の公式GTFSフィードの時刻表をMOTISで計算しています。', sources: 'データ提供元', disclaimer: 'ストライキや迂回運行の際は必ず公式情報をご確認ください。', privacy: 'プライバシー' },
+    errors: { network: 'データを読み込めませんでした。接続を確認して再試行してください。', location: '現在地を取得できません。設定で位置情報へのアクセスを許可してください。' }
   }
 };
