@@ -9,9 +9,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode Integer.parseInt(System.getenv("BUILD_NUMBER") ?: "1")
         versionName "1.0.0"
-        // AdMob App ID: impostare ADMOB_ANDROID_APP_ID su Codemagic con l'ID reale dell'app "OmniTransit Android".
-        // Il valore di riserva è l'ID di test Google: non pubblicare con questo.
-        manifestPlaceholders = [admobAppId: System.getenv("ADMOB_ANDROID_APP_ID") ?: "ca-app-pub-3940256099942544~3347511713"]
+        // AdMob App ID dell'app "OmniTransit Android" (sovrascrivibile con ADMOB_ANDROID_APP_ID)
+        manifestPlaceholders = [admobAppId: System.getenv("ADMOB_ANDROID_APP_ID") ?: "ca-app-pub-1151868778464777~5363185427"]
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
