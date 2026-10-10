@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LocateFixed, Building2, RefreshCw, Radio, Accessibility, AlertCircle, Loader2 } from 'lucide-react';
 import PlaceInput from './PlaceInput';
-import { departures as fetchDepartures, modeGroup, MODE_ICON, MODE_COLOR, formatTime, delayMinutes, minutesUntil } from '../services/transit';
+import { departures as fetchDepartures, dedupeDepartures, modeGroup, MODE_ICON, MODE_COLOR, formatTime, delayMinutes, minutesUntil } from '../services/transit';
 import { trackAdAction } from '../services/monetization';
 import { fmt } from '../data/translations';
 
 const RADIUS = 400;
+// Alcuni feed scrivono le destinazioni tutte in minuscolo ("bisceglie")
+const capitalize = s => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 const REFRESH_MS = 30000;
 
 export default function Departures({ city, cityLabel, t, lang, locale, getLocation, locating, stop, onStopChange }) {
@@ -35,7 +37,7 @@ export default function Departures({ city, cityLabel, t, lang, locale, getLocati
     setError(null);
     try {
       const list = await fetchDepartures({ ...query, n: 40, signal });
-      setItems(list.filter(d => minutesUntil(d.time) >= -1).sort((a, b) => new Date(a.time) - new Date(b.time)));
+      setItems(dedupeDepartures(list.filter(d => minutesUntil(d.time) >= -1)).sort((a, b) => new Date(a.time) - new Date(b.time)));
       setUpdatedAt(new Date());
     } catch (err) {
       if (err.name !== 'AbortError') setError(t.errors.network);
@@ -131,13 +133,13 @@ export default function Departures({ city, cityLabel, t, lang, locale, getLocati
             return (
               <li key={d.key + d.time} className={`p-3 sm:p-4 flex items-center gap-3 ${d.cancelled ? 'opacity-50' : ''}`}>
                 <span
-                  className="min-w-12 h-10 px-1.5 rounded-lg flex items-center justify-center font-extrabold text-xs text-center leading-tight"
+                  className="min-w-12 max-w-24 h-10 px-1.5 rounded-lg flex items-center justify-center font-extrabold text-xs text-center leading-tight overflow-hidden"
                   style={{ backgroundColor: d.color || MODE_COLOR[g], color: d.textColor || '#fff' }}
                 >
                   {d.line || MODE_ICON[g]}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className={`text-sm font-bold text-white truncate ${d.cancelled ? 'line-through' : ''}`}>{MODE_ICON[g]} {d.headsign}</div>
+                  <div className={`text-sm font-bold text-white truncate ${d.cancelled ? 'line-through' : ''}`}>{MODE_ICON[g]} {capitalize(d.headsign)}</div>
                   <div className="text-[11px] text-slate-400 truncate">
                     {d.stopName}{d.track ? ` · ${fmt(t.common.track, { n: d.track })}` : ''}{d.agencyName ? ` · ${d.agencyName}` : ''}
                     {d.wheelchair === 'ACCESSIBLE' && <Accessibility className="inline w-3 h-3 ml-1 text-indigo-400" />}

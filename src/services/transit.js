@@ -111,7 +111,7 @@ export async function departures({ stopId, center, radius = 400, n = 30, signal 
     realTime: st.realTime,
     cancelled: st.cancelled || st.tripCancelled,
     mode: st.mode,
-    line: st.displayName || st.routeShortName || st.tripShortName || '',
+    line: lineName(st),
     routeLongName: st.routeLongName,
     headsign: st.headsign || st.tripTo?.name,
     color: st.routeColor ? `#${st.routeColor}` : null,
@@ -153,6 +153,25 @@ export function decodePolyline(str, precision = 6) {
 }
 
 // ---------- Utilità di presentazione ----------
+
+/**
+ * Nome della linea da mostrare. Alcuni feed (es. un doppione per Tokyo) hanno solo numeri di corsa
+ * al posto del nome: in quel caso si usa il primo nome vero disponibile, altrimenti nessuno (icona del mezzo).
+ */
+export function lineName(x) {
+  const isTripNumber = v => !v || /^\d{5,}$/.test(v);
+  return [x.displayName, x.routeShortName, x.routeLongName, x.tripShortName].find(v => !isTripNumber(v)) || '';
+}
+
+/**
+ * Alcune città hanno due feed per gli stessi treni (es. Tokyo): uno con i nomi di linea e un doppione
+ * con solo numeri di corsa. Togliamo il doppione quando la stessa partenza esiste con un nome vero.
+ */
+export function dedupeDepartures(list) {
+  const norm = h => (h || '').replace(/\(.*?\)/g, '').trim().split(/\s+/)[0];
+  const named = new Set(list.filter(d => d.line).map(d => `${d.time}|${norm(d.headsign)}`));
+  return list.filter(d => d.line || !named.has(`${d.time}|${norm(d.headsign)}`));
+}
 
 export const TRANSIT_MODES = ['BUS', 'TRAM', 'SUBWAY', 'METRO', 'FERRY', 'RAIL', 'HIGHSPEED_RAIL', 'LONG_DISTANCE', 'NIGHT_RAIL', 'REGIONAL_FAST_RAIL', 'REGIONAL_RAIL', 'SUBURBAN', 'COACH', 'FUNICULAR', 'AERIAL_LIFT', 'CABLE_CAR', 'ODM', 'AIRPLANE', 'OTHER'];
 

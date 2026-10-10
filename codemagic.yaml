@@ -1,0 +1,76 @@
+# OmniTransit — build per App Store e Play Store (modello: FuelSaver).
+# Prima della prima build vedi PUBBLICAZIONE.md: profilo iOS "omnitransit_appstore", keystore
+# "omnitransit_android", ID AdMob reali in .env.production e URL del server MOTIS di produzione.
+# Nessun trigger automatico: la build si avvia a mano finché l'app non è pronta.
+workflows:
+  ios-app-store:
+    name: OmniTransit iOS App Store
+    max_build_duration: 90
+    instance_type: mac_mini_m4
+    integrations:
+      app_store_connect: Ikonet Solutions
+    environment:
+      ios_signing:
+        provisioning_profiles:
+          - omnitransit_appstore
+        certificates:
+          - ithelpdesk_distribution_20260916
+      vars:
+        XCODE_PROJECT: ios/App/App.xcodeproj
+        XCODE_SCHEME: App
+      xcode: latest
+      node: 22
+    scripts:
+      - name: Install npm dependencies
+        script: npm ci
+      - name: Build web app and sync iOS project
+        script: |
+          npm run build
+          npx cap sync ios
+      - name: Set up signing profiles
+        script: xcode-project use-profiles
+      - name: Apply Codemagic build number
+        script: |
+          cd ios/App
+          agvtool new-version -all "$BUILD_NUMBER"
+      - name: Build IPA for App Store Connect
+        script: |
+          xcode-project build-ipa \
+            --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false
+
+  android-release:
+    name: OmniTransit Android
+    max_build_duration: 45
+    instance_type: linux_x2
+    environment:
+      android_signing:
+        - omnitransit_android
+      vars:
+        PACKAGE_NAME: "com.ikonet.omnitransit"
+      node: 22
+      java: 21
+    scripts:
+      - name: Install npm dependencies
+        script: npm ci
+      - name: Build web app and sync Android project
+        script: |
+          npm run build
+          npx cap sync android
+      - name: Set Android SDK location
+        script: echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Build release AAB
+        script: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/bundle/release/*.aab

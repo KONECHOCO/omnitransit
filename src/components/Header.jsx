@@ -79,7 +79,8 @@ export default function Header({ t, lang, setLang, cityLabel, cityFlag, openCity
               className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap ${activeTab === key ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'}`}
             >
               {Icon ? <Icon className="w-4 h-4" /> : <span className="text-sm leading-none">🚕</span>}
-              <span className="hidden min-[400px]:inline">{label}</span>
+              {/* Su schermi stretti solo la scheda attiva mostra il nome: le altre restano icone */}
+              <span className={activeTab === key ? 'inline' : 'hidden sm:inline'}>{label}</span>
             </button>
           ))}
         </div>

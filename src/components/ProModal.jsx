@@ -66,7 +66,8 @@ export default function ProModal({ isOpen, onClose, t }) {
                 className="w-full py-3 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
-                {fmt(t.pro.buy, { price: proPrice || '2,99 €' })}
+                {/* Il prezzo reale (localizzato) arriva dallo store; questo è solo il ripiego */}
+                {fmt(t.pro.buy, { price: proPrice || t.pro.fallbackPrice })}
               </button>
               <button
                 disabled={busy}

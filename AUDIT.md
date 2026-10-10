@@ -1,5 +1,10 @@
 # OmniTransit — Audit del progetto (10/10/2026)
 
+> **Aggiornamento:** i problemi descritti qui sotto sono stati risolti con la riscrittura dell'app:
+> dati reali via MOTIS, 6 lingue complete, niente biglietti o taxi simulati, Tailwind locale, Capacitor, AdMob e Pro.
+> Cosa resta da fare per pubblicare: vedi `PUBBLICAZIONE.md`.
+> Questo documento descrive il prototipo originale.
+
 ## 1. Verdetto in breve
 
 Il progetto è un **prototipo grafico (mockup)**, non un'app funzionante.

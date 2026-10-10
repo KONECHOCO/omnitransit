@@ -4,7 +4,7 @@ import {
   Map as MapIcon, Star, Home, Briefcase, ExternalLink, AlertCircle, Loader2, Radio
 } from 'lucide-react';
 import PlaceInput from './PlaceInput';
-import { planTrip, modeGroup, MODE_ICON, MODE_COLOR, formatTime, formatDuration, delayMinutes, walkSeconds } from '../services/transit';
+import { planTrip, lineName, modeGroup, MODE_ICON, MODE_COLOR, formatTime, formatDuration, delayMinutes, walkSeconds } from '../services/transit';
 import { usePrefs, updatePrefs, addRecent, isFavorite, toggleFavorite, slimPlace, FREE_FAVORITES_LIMIT } from '../services/storage';
 import { isFeatureUnlocked, unlockWithRewardedVideo, useMonetization, trackAdAction } from '../services/monetization';
 import { fmt } from '../data/translations';
@@ -229,7 +229,7 @@ function LineBadge({ leg }) {
   const g = modeGroup(leg.mode);
   const bg = leg.routeColor ? `#${leg.routeColor}` : MODE_COLOR[g];
   const fg = leg.routeTextColor ? `#${leg.routeTextColor}` : '#fff';
-  const name = leg.displayName || leg.routeShortName || '';
+  const name = lineName(leg);
   return (
     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-bold whitespace-nowrap" style={{ backgroundColor: bg, color: fg }}>
       <span>{MODE_ICON[g]}</span>
@@ -308,7 +308,7 @@ function ItineraryCard({ it, t, locale, open, onToggle, onShowOnMap, destName })
                   <div className="space-y-1 bg-slate-900/70 border border-slate-800 rounded-xl p-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <LineBadge leg={leg} />
-                      {leg.headsign && <span className="text-slate-200 font-semibold">{fmt(t.planner.toward, { x: leg.headsign })}</span>}
+                      {leg.headsign && <span className="text-slate-200 font-semibold">{fmt(t.planner.toward, { x: leg.headsign.charAt(0).toUpperCase() + leg.headsign.slice(1) })}</span>}
                     </div>
                     <div className="text-slate-300">
                       <TimeWithDelay actual={leg.startTime} scheduled={leg.scheduledStartTime} tz={leg.from.tz} locale={locale} realTime={leg.realTime} t={t} />
