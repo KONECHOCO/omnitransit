@@ -1,0 +1,19 @@
+[Unit]
+Description=MOTIS transit routing server (OmniTransit)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=motis
+Group=motis
+WorkingDirectory=/opt/motis/data
+ExecStart=/opt/motis/motis server
+Restart=on-failure
+RestartSec=10
+# Il negozio ivoiro sullo stesso server ha la precedenza
+MemoryHigh=1500M
+MemoryMax=2500M
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

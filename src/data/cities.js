@@ -123,6 +123,13 @@ export const cities = [
   }
 ];
 
+/**
+ * Città mostrate in evidenza: devono essere coperte dal server orari in uso.
+ * VITE_FEATURED_CITIES (es. "milan,piacenza") restringe l'elenco quando il server copre solo alcune zone.
+ */
+const featuredIds = (import.meta.env.VITE_FEATURED_CITIES || '').split(',').map(s => s.trim()).filter(Boolean);
+export const featuredCities = featuredIds.length ? cities.filter(c => featuredIds.includes(c.id)) : cities;
+
 export function cityName(city, lang) {
   return city.names?.[lang] || city.names?.en || city.name;
 }

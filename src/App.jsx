@@ -10,11 +10,12 @@ import Taxi from './components/Taxi';
 import ProModal from './components/ProModal';
 import AdBanner from './components/AdBanner';
 
-import { cities, cityName } from './data/cities';
+import { featuredCities, cityName } from './data/cities';
 import { translations, detectLanguage, fmt } from './data/translations';
 import { usePrefs, updatePrefs } from './services/storage';
 import { getCurrentPosition } from './services/location';
 import { initMonetization, trackAdAction } from './services/monetization';
+import { USING_PUBLIC_TRANSITOUS } from './services/transit';
 
 const LOCALES = { it: 'it-IT', en: 'en-GB', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', ja: 'ja-JP' };
 
@@ -25,7 +26,7 @@ export default function App() {
   const locale = LOCALES[lang] || 'en-GB';
 
   const city = useMemo(
-    () => (prefs.customCity && prefs.cityId === prefs.customCity.id ? prefs.customCity : cities.find(c => c.id === prefs.cityId)) || cities[0],
+    () => (prefs.customCity && prefs.cityId === prefs.customCity.id ? prefs.customCity : featuredCities.find(c => c.id === prefs.cityId)) || featuredCities[0],
     [prefs.cityId, prefs.customCity]
   );
   const cityLabel = city.custom ? city.name : cityName(city, lang);
@@ -119,7 +120,7 @@ export default function App() {
       <footer className="border-t border-slate-800/80 py-5 pb-16 text-center text-[11px] text-slate-500 space-y-1 px-4">
         <p>{t.footer.data} {t.footer.disclaimer}</p>
         <p className="space-x-3">
-          <a href="https://transitous.org/sources/" target="_blank" rel="noreferrer" className="underline hover:text-slate-300">{t.footer.sources}</a>
+          <a href={USING_PUBLIC_TRANSITOUS ? 'https://transitous.org/sources/' : 'sources.html'} target="_blank" rel="noreferrer" className="underline hover:text-slate-300">{t.footer.sources}</a>
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline hover:text-slate-300">© OpenStreetMap</a>
           <a href="privacy.html" target="_blank" rel="noreferrer" className="underline hover:text-slate-300">{t.footer.privacy}</a>
         </p>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, Search, LocateFixed, Loader2 } from 'lucide-react';
-import { cities, cityName, customCity } from '../data/cities';
+import { featuredCities, cityName, customCity } from '../data/cities';
 import { geocode, reverseGeocode } from '../services/transit';
 
 export default function CityModal({ isOpen, onClose, activeCity, onSelect, t, lang, getLocation, locating }) {
@@ -89,7 +89,7 @@ export default function CityModal({ isOpen, onClose, activeCity, onSelect, t, la
               <div className="space-y-2">
                 <h3 className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">{t.city.featured}</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {cities.map(c => (
+                  {featuredCities.map(c => (
                     <button
                       key={c.id}
                       onClick={() => choose(c)}

@@ -1,0 +1,24 @@
+server:
+  host: 127.0.0.1
+  port: 8080
+  web_folder: /opt/motis/ui
+osm: area.osm.pbf
+timetable:
+  first_day: TODAY
+  num_days: 90
+  railviz: true
+  with_shapes: true
+  adjust_footpaths: true
+  link_stop_distance: 100
+  update_interval: 60
+  max_footpath_length: 15
+  default_transfer_time: 2
+  datasets:
+    it-atm-milano:
+      path: atm-milano.gtfs.zip
+    it-trenord:
+      path: trenord.gtfs.zip
+street_routing: true
+osr_footpath: false
+geocoding: true
+reverse_geocoding: true

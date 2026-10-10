@@ -3,19 +3,25 @@
 Stato al 10/10/2026. Il codice dell'app è pronto: dati reali, 6 lingue, AdMob + Pro 2,99 €, progetti iOS/Android,
 icone, `codemagic.yaml`, schede store, screenshot. Restano due **blocchi** e alcuni passaggi manuali.
 
-## ⛔ Blocco 1 — Server dati di produzione (obbligatorio)
+## ✅ Blocco 1 — Server dati di produzione (installato il 10/10/2026)
 
-L'app usa l'API di **Transitous** (motore open source MOTIS). La loro policy dice:
-*"Commercial use is not allowed"*. Un'app con pubblicità e Pro è commerciale, quindi **non può usarla in produzione**.
+MOTIS v2.11.3 gira su **ivoiro-server** (178.105.153.192), in `/opt/motis`, accanto al negozio ivoiroafrikstore.com.
 
-Due strade:
+- **Servizio**: `motis.service` ascolta su 127.0.0.1:8080, con limite di memoria (MemoryHigh 1,5 GB, MemoryMax 2,5 GB). Usa circa 230 MB di RAM.
+- **Pubblicazione**: nginx `transit.ikonetsolutions.com` espone solo `/api/`, con un limite di 10 richieste al secondo per IP.
+- **Aggiornamento**: ogni notte alle 3:30 (`/opt/motis/update.sh`, cron di root) riscarica gli orari, rifà l'importazione in una cartella nuova e poi la scambia con quella attiva. OSM viene riscaricato una volta a settimana.
+- **Memoria**: swapfile da 8 GB (`/swapfile-motis`, swappiness 10) che serve solo durante l'importazione.
+- **Copertura attuale**: Milano / Lombardia e Piacenza, con **ATM Milano** (CC-BY 4.0) e **Trenord** (CC-BY 4.0) e le strade OSM nel riquadro 8.6,44.85 – 10.3,45.95.
+- **Copia della configurazione**: `deploy/motis/`.
 
-| Opzione | Costo | Note |
-|---|---|---|
-| **A. MOTIS sul tuo server** (consigliata) | VPS da 16–32 GB RAM (~25–60 €/mese) | Stessa API, quindi nel codice basta cambiare `VITE_TRANSIT_API_URL` in `.env.production`. Si scaricano i feed GTFS delle città scelte (elenco feed: repository GitHub di Transitous) e l'estratto OpenStreetMap delle stesse zone. Comandi: `motis config <osm.pbf> <feed1.zip> <feed2.zip>…`, poi `motis import`, poi `motis server`. Va aggiornato ogni giorno o settimana con un cron. ⚠️ **Controlla la licenza di ogni feed**: la maggior parte permette l'uso commerciale (CC-BY, ODbL, licenze aperte), qualcuno no. |
-| **B. Chiedere il permesso a Transitous** | gratis | Scrivere sul loro canale Matrix spiegando l'app e il volume previsto. Senza un sì scritto non si pubblica. |
+**Da fare:**
+1. Su Namecheap aggiungere il record **A `transit` → 178.105.153.192**.
+2. Poi lanciare `certbot --nginx -d transit.ikonetsolutions.com` sul server (lo faccio io quando il DNS risponde).
 
-Per lo sviluppo e i test si può continuare a usare Transitous con poche richieste.
+**Per aggiungere città** si aggiungono feed con licenza commerciale in `update.sh` e `config.yml`, e si allarga l'area OSM.
+- Parigi (IDFM, ODbL), New York (MTA) e Londra (BODS / TfL) sono fattibili, ma con 4 GB di RAM l'importazione va fatta una zona alla volta; per tutte insieme serve un upgrade a 8–16 GB.
+- **Trenitalia**: il feed GTFS disponibile (BusOne) richiede un permesso scritto per l'uso commerciale.
+- Finché il server non copre altre città, `VITE_FEATURED_CITIES=milan,piacenza` in `.env.production`, e le schede store vanno corrette di conseguenza (oggi citano Londra, Parigi, NY e Tokyo).
 
 ## ⛔ Blocco 2 — Bus urbani SETA (Piacenza)
 
