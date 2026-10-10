@@ -11,7 +11,12 @@ workflows:
       app_store_connect: Ikonet Solutions
     environment:
       ios_signing:
-        # Il certificato (con chiave privata) è su Codemagic; il profilo App Store è nel repo (ios/profiles)
+        # Il certificato (con chiave privata) è su Codemagic; il profilo App Store di OmniTransit è nel repo
+        # (ios/profiles) e viene installato da uno script. Codemagic richiede almeno un profilo qui: quello di
+        # FuelSaver serve solo a questo, `xcode-project use-profiles` sceglie il profilo con bundle id corrispondente.
+        # Quando "omnitransit_appstore" sarà importato su Codemagic, sostituirlo qui e togliere lo script.
+        provisioning_profiles:
+          - fuelsaver_appstore
         certificates:
           - ithelpdesk_distribution_20260916
       vars:
