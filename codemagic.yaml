@@ -1,6 +1,6 @@
 # OmniTransit — build per App Store e Play Store (modello: FuelSaver).
-# Prima della prima build vedi PUBBLICAZIONE.md: profilo iOS "omnitransit_appstore", keystore
-# "omnitransit_android", ID AdMob reali in .env.production e URL del server MOTIS di produzione.
+# iOS: profilo App Store in ios/profiles (creato via API App Store Connect, scade 16/09/2027).
+# Android: keystore "omnitransit_android" da caricare su Codemagic (Code signing identities).
 # Nessun trigger automatico: la build si avvia a mano finché l'app non è pronta.
 workflows:
   ios-app-store:
@@ -11,8 +11,7 @@ workflows:
       app_store_connect: Ikonet Solutions
     environment:
       ios_signing:
-        provisioning_profiles:
-          - omnitransit_appstore
+        # Il certificato (con chiave privata) è su Codemagic; il profilo App Store è nel repo (ios/profiles)
         certificates:
           - ithelpdesk_distribution_20260916
       vars:
@@ -27,6 +26,11 @@ workflows:
         script: |
           npm run build
           npx cap sync ios
+      - name: Install App Store provisioning profile
+        script: |
+          PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILES_DIR"
+          cp ios/profiles/omnitransit_appstore.mobileprovision "$PROFILES_DIR/f1d3db75-c993-4359-bfd2-d054dff9af2f.mobileprovision"
       - name: Set up signing profiles
         script: xcode-project use-profiles
       - name: Apply Codemagic build number
