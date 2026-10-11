@@ -95,7 +95,9 @@ let state = {
   adsReady: false,
   rewardedReady: false,
   bannerHeight: 0,
-  unlocks: readStorage(UNLOCKS_KEY, {})
+  unlocks: readStorage(UNLOCKS_KEY, {}),
+  testAds: USE_TEST_ADS,
+  diag: []
 };
 const listeners = new Set();
 function setState(patch) {
@@ -126,8 +128,10 @@ async function prepareInterstitial() {
   try {
     await AdMob.prepareInterstitial({ adId: AD_IDS.interstitial, isTesting: USE_TEST_ADS });
     interstitialLoaded = true;
-  } catch {
+    diag('interstitial caricato');
+  } catch (err) {
     interstitialLoaded = false;
+    diag(`interstitial non disponibile: ${err?.message || err}`);
   }
 }
 
@@ -144,8 +148,10 @@ async function loadAppOpen() {
   try {
     await AdMob.loadAppOpen({ adId: AD_IDS.appOpen });
     appOpenLoaded = true;
-  } catch {
+    diag('app open caricato');
+  } catch (err) {
     appOpenLoaded = false;
+    diag(`app open non disponibile: ${err?.message || err}`);
   }
 }
 
@@ -176,8 +182,9 @@ async function showBanner() {
       margin: 0,
       isTesting: USE_TEST_ADS
     });
+    diag('banner richiesto');
   } catch (err) {
-    console.info('Banner non disponibile', err);
+    diag(`banner errore: ${err?.message || err}`);
   }
 }
 
@@ -211,41 +218,56 @@ async function waitUntilActive() {
   });
 }
 
+// Registro diagnostico (visibile nell'app in modalità test): mostra cosa succede passo per passo sul telefono
+export function diag(msg) {
+  const line = `${new Date().toLocaleTimeString()} ${msg}`;
+  console.info('[ads]', line);
+  setState({ diag: [...(state.diag || []).slice(-30), line] });
+}
+
 // App Tracking Transparency (iOS): il popup viene mostrato dal codice nativo (SceneDelegate.swift)
-// appena l'app è attiva. Qui aspettiamo la risposta dell'utente prima di inizializzare AdMob, così
-// nessun dato di tracciamento viene raccolto prima del consenso. Dopo 6 s senza popup lo chiediamo
-// anche dal plugin come riserva.
+// appena l'app è attiva; dopo 3 s lo chiediamo anche dal plugin come riserva. Si aspetta al massimo
+// 10 s: se il popup non compare (es. tracciamento disattivato nelle Impostazioni) si va avanti con
+// annunci non personalizzati invece di bloccare tutto.
 async function requestTrackingPermission() {
   if (platform !== 'ios') return;
   try {
     await waitUntilActive();
-    for (let waited = 0; waited < 60000; waited += 1000) {
+    for (let waited = 0; waited <= 10000; waited += 1000) {
       const { status } = await AdMob.trackingAuthorizationStatus();
-      if (status !== 'notDetermined') return;
-      if (waited === 6000) AdMob.requestTrackingAuthorization().catch(() => {});
+      if (status !== 'notDetermined') {
+        diag(`ATT: ${status}`);
+        return;
+      }
+      if (waited === 3000) AdMob.requestTrackingAuthorization().catch(() => {});
       await sleep(1000);
     }
+    diag('ATT: nessuna risposta in 10 s, si prosegue');
   } catch (err) {
-    console.info('ATT non disponibile', err);
+    diag(`ATT errore: ${err?.message || err}`);
   }
 }
 
-// Consenso GDPR (UMP, obbligatorio in UE/UK per AdMob). Un errore qui non deve bloccare ATT né gli annunci.
+// Consenso GDPR (UMP, obbligatorio in UE/UK per AdMob), PRIMA della richiesta ATT come indica Google.
+// Restituisce se si possono richiedere annunci. Un errore non deve bloccare l'app.
 async function gatherConsent() {
-  await requestTrackingPermission();
+  let canRequestAds = true;
   try {
     let info = await Promise.race([
       AdMob.requestConsentInfo(),
       sleep(10000).then(() => { throw new Error('UMP timeout'); })
     ]);
+    diag(`UMP: stato=${info.status} modulo=${info.isConsentFormAvailable} canRequestAds=${info.canRequestAds}`);
     if (info.isConsentFormAvailable && info.status === AdmobConsentStatus.REQUIRED) {
       info = await AdMob.showConsentForm();
+      diag(`UMP dopo il modulo: stato=${info.status} canRequestAds=${info.canRequestAds}`);
     }
-    return info.canRequestAds !== false;
+    canRequestAds = info.canRequestAds !== false;
   } catch (err) {
-    console.info('Consenso UMP non disponibile', err);
-    return true;
+    diag(`UMP errore: ${err?.message || err}`);
   }
+  await requestTrackingPermission();
+  return canRequestAds;
 }
 
 /** Da chiamare una volta all'avvio dell'app. */
@@ -262,18 +284,31 @@ export async function initMonetization() {
     return;
   }
 
+  diag(`avvio: test=${USE_TEST_ADS} piattaforma=${platform}`);
   let canRequestAds = true;
   try {
     canRequestAds = await gatherConsent();
   } finally {
     resolveConsentDone();
   }
-  if (!canRequestAds) return;
+  // Senza consenso Google non permette annunci reali; quelli di test si mostrano comunque per le prove
+  if (!canRequestAds && !USE_TEST_ADS) {
+    diag('annunci non consentiti (consenso GDPR mancante)');
+    return;
+  }
 
-  await AdMob.initialize({ initializeForTesting: USE_TEST_ADS });
+  try {
+    await AdMob.initialize({ initializeForTesting: USE_TEST_ADS });
+  } catch (err) {
+    diag(`AdMob initialize errore: ${err?.message || err}`);
+    return;
+  }
   setState({ adsReady: true });
+  diag('AdMob pronto');
 
   AdMob.addListener(BannerAdPluginEvents.SizeChanged, size => setState({ bannerHeight: size.height || 0 }));
+  AdMob.addListener(BannerAdPluginEvents.Loaded, () => diag('banner caricato'));
+  AdMob.addListener(BannerAdPluginEvents.FailedToLoad, err => diag(`banner fallito: ${err?.message || err?.code || JSON.stringify(err)}`));
   AdMob.addListener(AppOpenAdPluginEvents.Closed, () => {
     fullscreenShowing = false;
     lastFullscreenAt = Date.now();

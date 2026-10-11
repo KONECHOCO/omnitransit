@@ -9,6 +9,7 @@ import Tickets from './components/Tickets';
 import Taxi from './components/Taxi';
 import ProModal from './components/ProModal';
 import AdBanner from './components/AdBanner';
+import AdDiagnostics from './components/AdDiagnostics';
 
 import { featuredCities, cityName } from './data/cities';
 import { translations, detectLanguage, fmt } from './data/translations';
@@ -146,6 +147,7 @@ export default function App() {
       )}
 
       <AdBanner t={t} onUpgrade={() => setProOpen(true)} />
+      <AdDiagnostics />
 
       <CityModal
         isOpen={cityModalOpen}
