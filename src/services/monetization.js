@@ -51,14 +51,12 @@ const REAL_IDS = {
   interstitial: env[`VITE_ADMOB_${P}_INTERSTITIAL`],
   rewarded: env[`VITE_ADMOB_${P}_REWARDED`]
 };
-// In sviluppo sempre annunci di test: cliccare i propri annunci reali viola le norme AdMob
-const USE_TEST_ADS = env.DEV || !REAL_IDS.banner;
-const AD_IDS = USE_TEST_ADS ? TEST_IDS[platform] || TEST_IDS.android : REAL_IDS;
 
 // Frequenze: aggressive ma dentro le regole AdMob (niente annunci a raffica o durante l'uso attivo)
-const INTERSTITIAL_EVERY_N_ACTIONS = 3;
-const MIN_GAP_BETWEEN_FULLSCREEN_MS = 60 * 1000;
-const APP_OPEN_MIN_BACKGROUND_MS = 30 * 1000;
+// Più annunci, ma sempre nei punti di passaggio e mai a raffica (norme AdMob sugli interstitial)
+const INTERSTITIAL_EVERY_N_ACTIONS = 2;
+const MIN_GAP_BETWEEN_FULLSCREEN_MS = 45 * 1000;
+const APP_OPEN_MIN_BACKGROUND_MS = 20 * 1000;
 const APP_OPEN_LOAD_TIMEOUT_MS = 8000;
 const REWARD_UNLOCK_MS = 24 * 60 * 60 * 1000;
 
@@ -79,6 +77,12 @@ function writeStorage(key, value) {
     // storage non disponibile
   }
 }
+
+// In sviluppo sempre annunci di test: cliccare i propri annunci reali viola le norme AdMob.
+// Nelle build di prova (TestFlight / test interno) si attivano toccando 7 volte il logo: vedi toggleTestAds().
+const TEST_ADS_KEY = 'omnitransit.testAds';
+const USE_TEST_ADS = env.DEV || !REAL_IDS.banner || readStorage(TEST_ADS_KEY, false);
+const AD_IDS = USE_TEST_ADS ? TEST_IDS[platform] || TEST_IDS.android : REAL_IDS;
 
 // ---------- Stato osservabile da React ----------
 // Solo in sviluppo: ?storeshot mostra l'interfaccia d'acquisto nativa per gli screenshot degli store
@@ -284,11 +288,25 @@ export async function initMonetization() {
     loadAppOpen();
   });
 
-  // 1) Video appena si apre l'app, 2) banner fisso, 3) precarico interstitial e video premio
-  await showAppOpen();
+  // 1) Annuncio a schermo intero all'apertura (app open; se non disponibile, interstitial video),
+  // 2) banner fisso, 3) precarico interstitial e video premio
   showBanner();
-  prepareInterstitial();
+  await prepareInterstitial();
   prepareRewarded();
+  await showAppOpen();
+  if (!fullscreenShowing && Date.now() - lastFullscreenAt > MIN_GAP_BETWEEN_FULLSCREEN_MS && interstitialLoaded) {
+    try {
+      fullscreenShowing = true;
+      interstitialLoaded = false;
+      await AdMob.showInterstitial();
+      lastFullscreenAt = Date.now();
+    } catch {
+      // nessun annuncio disponibile
+    } finally {
+      fullscreenShowing = false;
+      prepareInterstitial();
+    }
+  }
 
   // Video anche quando l'utente torna nell'app dopo averla lasciata in background
   CapApp.addListener('appStateChange', ({ isActive }) => {
@@ -407,4 +425,11 @@ export async function restorePro() {
   }
   await refreshProStatus();
   return state.isPro;
+}
+
+/** Interruttore nascosto per le build di prova: attiva/disattiva gli annunci di test (serve riavviare l'app). */
+export function toggleTestAds() {
+  const next = !readStorage(TEST_ADS_KEY, false);
+  writeStorage(TEST_ADS_KEY, next);
+  return next;
 }

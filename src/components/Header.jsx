@@ -1,10 +1,20 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Globe, ChevronDown, Compass, Clock, Map as MapIcon, Ticket, Crown } from 'lucide-react';
 import { LANGUAGES } from '../data/translations';
 import { useMonetization } from '../services/monetization';
 
-export default function Header({ t, lang, setLang, cityLabel, cityFlag, openCityModal, activeTab, setActiveTab, onOpenPro }) {
+export default function Header({ t, lang, setLang, cityLabel, cityFlag, openCityModal, activeTab, setActiveTab, onOpenPro, onSecretTap }) {
   const [langOpen, setLangOpen] = useState(false);
+  const taps = useRef({ n: 0, at: 0 });
+  const logoTap = () => {
+    const now = Date.now();
+    taps.current = now - taps.current.at < 1500 ? { n: taps.current.n + 1, at: now } : { n: 1, at: now };
+    if (taps.current.n >= 7) {
+      taps.current = { n: 0, at: 0 };
+      onSecretTap?.();
+    }
+    setActiveTab('planner');
+  };
   const { isPro } = useMonetization();
 
   const tabs = [
@@ -19,7 +29,7 @@ export default function Header({ t, lang, setLang, cityLabel, cityFlag, openCity
     <header className="sticky top-0 z-40 w-full bg-slate-950/90 backdrop-blur-xl border-b border-slate-800 pt-[env(safe-area-inset-top)]">
       <div className="max-w-5xl mx-auto px-4">
         <div className="flex items-center justify-between gap-2 h-14">
-          <button onClick={() => setActiveTab('planner')} className="flex items-center gap-2 min-w-0">
+          <button onClick={logoTap} className="flex items-center gap-2 min-w-0">
             <img src="/icon.svg" alt="" className="w-9 h-9 rounded-xl shrink-0" />
             <span className="hidden sm:block text-lg font-bold tracking-tight text-white font-heading">
               Omni<span className="text-indigo-400">Transit</span>

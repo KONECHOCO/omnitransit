@@ -14,7 +14,7 @@ import { featuredCities, cityName } from './data/cities';
 import { translations, detectLanguage, fmt } from './data/translations';
 import { usePrefs, updatePrefs } from './services/storage';
 import { getCurrentPosition } from './services/location';
-import { initMonetization, trackAdAction } from './services/monetization';
+import { initMonetization, trackAdAction, toggleTestAds } from './services/monetization';
 import { USING_PUBLIC_TRANSITOUS } from './services/transit';
 
 const LOCALES = { it: 'it-IT', en: 'en-GB', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', ja: 'ja-JP' };
@@ -38,6 +38,20 @@ export default function App() {
   const [selectedStop, setSelectedStop] = useState(null);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState(false);
+  const [notice, setNotice] = useState(null);
+
+  // Ogni cambio di scheda è un punto di passaggio naturale per un annuncio a schermo intero
+  const changeTab = tab => {
+    if (tab !== activeTab) trackAdAction();
+    setActiveTab(tab);
+  };
+
+  // 7 tocchi sul logo: annunci di test on/off (per controllare le pubblicità nelle build di prova)
+  const onSecretTap = () => {
+    const on = toggleTestAds();
+    setNotice(on ? "Test ads ON — riavvia l'app" : "Test ads OFF — riavvia l'app");
+    setTimeout(() => setNotice(null), 4000);
+  };
 
   useEffect(() => {
     initMonetization();
@@ -80,8 +94,9 @@ export default function App() {
         cityFlag={city.flag}
         openCityModal={() => setCityModalOpen(true)}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={changeTab}
         onOpenPro={() => setProOpen(true)}
+        onSecretTap={onSecretTap}
       />
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-5 space-y-4">
@@ -125,6 +140,10 @@ export default function App() {
           <a href="privacy.html" target="_blank" rel="noreferrer" className="underline hover:text-slate-300">{t.footer.privacy}</a>
         </p>
       </footer>
+
+      {notice && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-slate-800 border border-slate-600 text-xs text-white shadow-xl">{notice}</div>
+      )}
 
       <AdBanner t={t} onUpgrade={() => setProOpen(true)} />
 
