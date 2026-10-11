@@ -1,9 +1,12 @@
 import { Capacitor } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
+import { consentDone } from './monetization';
 
 /** Posizione attuale dell'utente. Nell'app nativa usa il plugin (popup di sistema corretto su iOS). */
 export async function getCurrentPosition() {
   if (Capacitor.isNativePlatform()) {
+    // iOS mostra un popup alla volta: prima finiscono consenso GDPR e tracciamento, poi la posizione
+    await Promise.race([consentDone, new Promise(r => setTimeout(r, 15000))]);
     const perm = await Geolocation.checkPermissions();
     if (perm.location !== 'granted') {
       const req = await Geolocation.requestPermissions({ permissions: ['location'] });
